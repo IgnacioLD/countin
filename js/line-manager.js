@@ -53,6 +53,7 @@ class LineManager {
         this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
 
         console.log('Line manager initialized');
+        window.enablePerspective3D = true;
     }
 
     /**

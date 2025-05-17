@@ -209,7 +209,15 @@ class CountingVisualization {
         const legendX = padding.left + (width - padding.left - padding.right - legendWidth * legendItems.length) / 2;
         const legendY = 10;
 
-        ctx.font = '12px Arial';
+        // Draw dashboard title for clarity
+        ctx.font = '16px "Helvetica Neue", sans-serif';
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText("Dashboard Summary", width / 2, padding.top);
+        
+        // Set legend text style for improved readability
+        ctx.font = '12px "Helvetica Neue", sans-serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
 

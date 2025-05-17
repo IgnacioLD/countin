@@ -336,17 +336,16 @@ class PeopleCounter {
             if (this.isRunning) {
                 this.stopCounting();
             }
-
-            // Setup overlay is hidden to allow interaction with canvas
+            
+            // Hide setup overlay and enable drawing immediately
             this.setupOverlay.style.display = 'none';
             this.setupModeBtn.classList.add('active');
             this.countingModeBtn.classList.remove('active');
             this.currentModeEl.textContent = 'Setup';
-
-            // Enable line manager for setup
+            
+            // Enable line manager for setup and inform the user
             this.lineManager.enableDrawing();
-
-            this.log('Switched to setup mode', 'info');
+            this.log('Setup mode active: Click and drag on the canvas to draw counting areas. Use the pencil icon to cancel or restart drawing if needed.', 'info');
         } else if (mode === 'counting') {
             // Check if we have at least one line
             if (this.lineManager.getLines().length === 0) {

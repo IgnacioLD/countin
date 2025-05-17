@@ -264,54 +264,51 @@ class LineManager {
     checkLineCrossings(person, prevPos, currentPos) {
         if (!person || !person.id || !prevPos || !currentPos) return;
 
-        // Check crossing for each line
         for (const line of this.lines) {
-            // Get line points
-            const lineStart = [line.start.x, line.start.y];
-            const lineEnd = [line.end.x, line.end.y];
+            // Compute rectangular area boundaries from the drawn area
+            const rectX = Math.min(line.start.x, line.end.x);
+            const rectY = Math.min(line.start.y, line.end.y);
+            const rectW = Math.abs(line.end.x - line.start.x);
+            const rectH = Math.abs(line.end.y - line.start.y);
 
-            // Check if the trajectory crosses the line
-            const intersection = this.lineIntersection(
-                prevPos, currentPos,
-                lineStart, lineEnd
-            );
+            let crossed = false;
+            if (line.orientation === 'vertical') {
+                crossed = ((prevPos[0] < rectX && currentPos[0] > rectX + rectW) ||
+                           (prevPos[0] > rectX + rectW && currentPos[0] < rectX));
+            } else {
+                crossed = ((prevPos[1] < rectY && currentPos[1] > rectY + rectH) ||
+                           (prevPos[1] > rectY + rectH && currentPos[1] < rectY));
+            }
 
-            // If no intersection, continue to next line
-            if (!intersection) continue;
+            if (!crossed) continue;
 
-            // Create a unique key for this person-line pair
+            // Use the center of the rectangle as the crossing position
+            const intersection = [rectX + rectW / 2, rectY + rectH / 2];
+
             const crossingKey = `${person.id}-${line.id}`;
-
-            // If we already counted this crossing recently, skip it
             const lastCrossing = this.crossedTracks.get(crossingKey);
             const now = Date.now();
-
             if (lastCrossing && (now - lastCrossing.timestamp) < 2000) {
-                // Skip if crossed within the last 2 seconds
                 console.log(`Skipping duplicate crossing of ${crossingKey}`);
                 continue;
             }
 
-            // Determine crossing direction
-            const direction = this.determineLineCrossingDirection(
-                prevPos, currentPos,
-                lineStart, lineEnd
-            );
+            // For a vertical area, if the previous position is left of the area, count as 'in'
+            // For horizontal, if the previous position is above the area, count as 'in'
+            const direction = (line.orientation === 'vertical')
+                ? (prevPos[0] < rectX ? 'in' : 'out')
+                : (prevPos[1] < rectY ? 'in' : 'out');
 
-            // Update count for this line
             if (!this.lineCrossings[line.id]) {
                 this.lineCrossings[line.id] = { in: 0, out: 0 };
             }
-
             this.lineCrossings[line.id][direction]++;
 
-            // Remember this crossing to prevent duplicates
             this.crossedTracks.set(crossingKey, {
                 timestamp: now,
                 direction
             });
 
-            // Create crossing event
             const crossingEvent = {
                 lineId: line.id,
                 lineName: line.name,
@@ -323,7 +320,6 @@ class LineManager {
 
             console.log(`Person ${person.id} crossed ${line.name} going ${direction}`, crossingEvent);
 
-            // Trigger callback if exists
             if (this.onLineCrossed) {
                 this.onLineCrossed(crossingEvent);
             }

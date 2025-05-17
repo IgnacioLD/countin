@@ -492,32 +492,75 @@ class LineManager {
         const width = Math.abs(end.x - start.x);
         const height = Math.abs(end.y - start.y);
     
-        // Draw the rectangular area
-        this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = 3;
-        this.ctx.strokeRect(x, y, width, height);
+        // If perspective mode is enabled, draw a quadrilateral to simulate 3D perspective.
+        // This simulates a perspective effect by making the top edge narrower (60% width) than the bottom edge.
+        if (window.enablePerspectiveBoxes) {
+            const perspectiveRatio = 0.6; // Top edge is 60% of bottom edge width
+            const topWidth = width * perspectiveRatio;
+            const dx = (width - topWidth) / 2;
     
-        // If not actively drawing, add a label at the center of the area
-        if (!isDrawing) {
-            this.ctx.font = '14px "Helvetica Neue", sans-serif';
-            const midX = x + width / 2;
-            const midY = y + height / 2;
-            const textMetrics = this.ctx.measureText(name);
-            const textWidth = textMetrics.width;
-            const textHeight = 14;
+            this.ctx.beginPath();
+            // Top left
+            this.ctx.moveTo(x + dx, y);
+            // Top right
+            this.ctx.lineTo(x + dx + topWidth, y);
+            // Bottom right
+            this.ctx.lineTo(x + width, y + height);
+            // Bottom left
+            this.ctx.lineTo(x, y + height);
+            this.ctx.closePath();
     
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            this.ctx.fillRect(
-                midX - textWidth / 2 - 5,
-                midY - textHeight / 2 - 5,
-                textWidth + 10,
-                textHeight + 10
-            );
+            this.ctx.strokeStyle = color;
+            this.ctx.lineWidth = 3;
+            this.ctx.stroke();
     
-            this.ctx.fillStyle = color;
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(name, midX, midY);
+            if (!isDrawing) {
+                // Compute approximate center as the average of the four corners.
+                const midX = ( (x + dx) + (x + dx + topWidth) + (x + width) + x ) / 4;
+                const midY = ( y + y + (y + height) + (y + height) ) / 4;
+                const textMetrics = this.ctx.measureText(name);
+                const textWidth = textMetrics.width;
+                const textHeight = 14;
+    
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                this.ctx.fillRect(
+                    midX - textWidth / 2 - 5,
+                    midY - textHeight / 2 - 5,
+                    textWidth + 10,
+                    textHeight + 10
+                );
+    
+                this.ctx.fillStyle = color;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(name, midX, midY);
+            }
+        } else {
+            // Default: Draw a simple rectangle.
+            this.ctx.strokeStyle = color;
+            this.ctx.lineWidth = 3;
+            this.ctx.strokeRect(x, y, width, height);
+    
+            if (!isDrawing) {
+                const midX = x + width / 2;
+                const midY = y + height / 2;
+                const textMetrics = this.ctx.measureText(name);
+                const textWidth = textMetrics.width;
+                const textHeight = 14;
+    
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                this.ctx.fillRect(
+                    midX - textWidth / 2 - 5,
+                    midY - textHeight / 2 - 5,
+                    textWidth + 10,
+                    textHeight + 10
+                );
+    
+                this.ctx.fillStyle = color;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(name, midX, midY);
+            }
         }
     }
 

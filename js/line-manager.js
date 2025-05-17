@@ -490,42 +490,26 @@ class LineManager {
      * @param {boolean} isDrawing - Whether this is a line being drawn
      */
     drawLine(line, isDrawing = false) {
-        const { start, end, color } = line;
-
-        // Draw the line
-        this.ctx.beginPath();
-        this.ctx.moveTo(start.x, start.y);
-        this.ctx.lineTo(end.x, end.y);
+        const { start, end, color, name } = line;
+        const x = Math.min(start.x, end.x);
+        const y = Math.min(start.y, end.y);
+        const width = Math.abs(end.x - start.x);
+        const height = Math.abs(end.y - start.y);
+    
+        // Draw the rectangular area
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = 3;
-        this.ctx.stroke();
-
-        // Draw endpoints
-        this.ctx.beginPath();
-        this.ctx.arc(start.x, start.y, 5, 0, Math.PI * 2);
-        this.ctx.fillStyle = color;
-        this.ctx.fill();
-
-        this.ctx.beginPath();
-        this.ctx.arc(end.x, end.y, 5, 0, Math.PI * 2);
-        this.ctx.fillStyle = color;
-        this.ctx.fill();
-
-        // If not actively drawing, add a label
+        this.ctx.strokeRect(x, y, width, height);
+    
+        // If not actively drawing, add a label at the center of the area
         if (!isDrawing) {
-            // Draw line name
             this.ctx.font = '14px "Helvetica Neue", sans-serif';
-            this.ctx.fillStyle = color;
-
-            // Position the text in the middle of the line
-            const midX = (start.x + end.x) / 2;
-            const midY = (start.y + end.y) / 2;
-
-            // Add a white background for better visibility
-            const textMetrics = this.ctx.measureText(line.name);
+            const midX = x + width / 2;
+            const midY = y + height / 2;
+            const textMetrics = this.ctx.measureText(name);
             const textWidth = textMetrics.width;
-            const textHeight = 14; // Approximate height for standard font
-
+            const textHeight = 14;
+    
             this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
             this.ctx.fillRect(
                 midX - textWidth / 2 - 5,
@@ -533,15 +517,11 @@ class LineManager {
                 textWidth + 10,
                 textHeight + 10
             );
-
-            // Draw the text
+    
             this.ctx.fillStyle = color;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(line.name, midX, midY);
-
-            // Draw direction indicators
-            this.drawDirectionIndicator(line);
+            this.ctx.fillText(name, midX, midY);
         }
     }
 
@@ -644,41 +624,30 @@ class LineManager {
         this.redrawLines();
     }
 
-    /**
-     * Handle mouse up event
-     * @param {MouseEvent} event - Mouse event
-     */
     handleMouseUp(event) {
         if (!this.isDrawing) return;
-
-        // Get canvas-relative coordinates
+    
         const rect = this.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
-
+    
         console.log('Mouse up at', x, y);
-
-        // Update end point
+    
         this.drawingLine.end = { x, y };
-
-        // Check if line is long enough to be valid
-        const dx = this.drawingLine.end.x - this.drawingLine.start.x;
-        const dy = this.drawingLine.end.y - this.drawingLine.start.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-
-        if (length >= 20) {
-            // Add the line
+    
+        const rectWidth = Math.abs(this.drawingLine.end.x - this.drawingLine.start.x);
+        const rectHeight = Math.abs(this.drawingLine.end.y - this.drawingLine.start.y);
+    
+        if (rectWidth >= 20 && rectHeight >= 20) {
             this.addLine(this.drawingLine);
-            console.log('Line added through mouse interaction');
+            console.log('Area added through mouse interaction');
         } else {
-            console.log('Line too short, discarding');
+            console.log('Area too small, discarding');
         }
-
-        // End drawing
+    
         this.isDrawing = false;
         this.drawingLine = null;
-
-        // Redraw
+    
         this.redrawLines();
     }
 
@@ -749,30 +718,24 @@ class LineManager {
         this.redrawLines();
     }
 
-    /**
-     * Handle touch end event
-     * @param {TouchEvent} event - Touch event
-     */
     handleTouchEnd(event) {
         if (!this.isDrawing) return;
-
-        // Check if line is long enough to be valid
+    
         const dx = this.drawingLine.end.x - this.drawingLine.start.x;
         const dy = this.drawingLine.end.y - this.drawingLine.start.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-
-        if (length >= 20) {
-            // Add the line
+        const rectWidth = Math.abs(dx);
+        const rectHeight = Math.abs(dy);
+    
+        if (rectWidth >= 20 && rectHeight >= 20) {
             this.addLine(this.drawingLine);
+            console.log('Area added through touch interaction');
         } else {
-            console.log('Line too short, discarding');
+            console.log('Area too small, discarding');
         }
-
-        // End drawing
+    
         this.isDrawing = false;
         this.drawingLine = null;
-
-        // Redraw
+    
         this.redrawLines();
     }
 }

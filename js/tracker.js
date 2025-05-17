@@ -345,8 +345,8 @@ class PersonTracker {
         if (track.history.length > 0) {
             const lastCentroid = track.history[track.history.length - 1].centroid;
             smoothedCentroid = [
-                Math.round(0.7 * newCentroid[0] + 0.3 * lastCentroid[0]),
-                Math.round(0.7 * newCentroid[1] + 0.3 * lastCentroid[1])
+                Math.round(0.3 * newCentroid[0] + 0.7 * lastCentroid[0]),
+                Math.round(0.3 * newCentroid[1] + 0.7 * lastCentroid[1])
             ];
         }
         // Update last seen time

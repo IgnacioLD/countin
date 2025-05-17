@@ -692,10 +692,34 @@ class PeopleCounter {
     }
 
     /**
-     * Send data to the server (mock implementation)
+     * Send count data to the server.
+     * This function sends only the numerical counts for people detection using WebSocket if available,
+     * otherwise falls back to an HTTP POST request.
      */
+    /**
+     * Initialize WebSocket connection for live data transmission.
+     * Attempts to open a WebSocket connection to a predefined server URL.
+     */
+    initWebSocket() {
+        const wsUrl = 'ws://localhost:8080'; // Update this URL as needed
+        try {
+            window.socket = new WebSocket(wsUrl);
+            window.socket.onopen = () => {
+                this.log('WebSocket connection established', 'success');
+            };
+            window.socket.onclose = () => {
+                this.log('WebSocket connection closed', 'warning');
+            };
+            window.socket.onerror = (error) => {
+                this.log('WebSocket error: ' + error.message, 'error');
+            };
+        } catch (error) {
+            this.log('Failed to initialize WebSocket: ' + error.message, 'error');
+        }
+    }
+    
     sendDataToServer() {
-        this.log('Sending data to server...', 'info');
+        this.log('Sending count data to server...', 'info');
 
         // Create data payload
         const data = {
@@ -704,31 +728,48 @@ class PeopleCounter {
             lineCounts: this.lineManager.getLineCrossings()
         };
 
-        // Mock server communication
-        setTimeout(() => {
-            this.log('Data successfully sent to server', 'success');
+        // Use WebSocket if available and connected
+        if (window.socket && window.socket.readyState === WebSocket.OPEN) {
+            window.socket.send(JSON.stringify(data));
+            this.log('Data sent via WebSocket', 'success');
             this.lastSyncTime = Date.now();
 
             // Update status dot
             const statusDot = document.querySelector('.status-dot');
             const statusText = document.querySelector('.status-text');
-
             if (statusDot && statusText) {
                 statusDot.classList.remove('offline');
                 statusDot.classList.add('online');
-                statusText.textContent = 'Online (Mocked)';
-
-                // Reset to offline after 2 seconds
+                statusText.textContent = 'Online';
                 setTimeout(() => {
                     statusDot.classList.remove('online');
                     statusDot.classList.add('offline');
-                    statusText.textContent = 'Offline (Mocked)';
+                    statusText.textContent = 'Offline';
                 }, 2000);
             }
-        }, 500);
+        } else {
+            // Fallback: Send data via HTTP POST
+            fetch('/api/counts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.ok) {
+                    this.log('Data sent via HTTP', 'success');
+                    this.lastSyncTime = Date.now();
+                } else {
+                    this.log('HTTP data sending failed', 'error');
+                }
+            })
+            .catch(err => {
+                this.log('HTTP error: ' + err.message, 'error');
+            });
+        }
 
         console.log('Data payload for server:', data);
-
         return data;
     }
 

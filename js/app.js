@@ -98,9 +98,14 @@ class PeopleCounter {
      * Add test buttons for debugging
      */
     addTestButtons() {
-        // Create a debug controls container with modern style
+        // Create a debug controls container with modern flex layout
         const debugControls = document.createElement('div');
         debugControls.className = 'debug-controls';
+        debugControls.style.display = 'flex';
+        debugControls.style.flexWrap = 'wrap';
+        debugControls.style.gap = '15px';
+        debugControls.style.justifyContent = 'center';
+        debugControls.style.alignItems = 'center';
         debugControls.style.marginTop = '20px';
         debugControls.style.padding = '20px';
         debugControls.style.background = 'linear-gradient(135deg, #f0f4f8, #d9e2ec)';

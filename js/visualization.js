@@ -222,6 +222,10 @@ class CountingVisualization {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
+        // Draw legend background box for a cleaner appearance
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillRect(legendX - 10, legendY - 5, legendWidth * legendItems.length + 20, 25);
+
         legendItems.forEach((item, index) => {
             const x = legendX + index * legendWidth;
 

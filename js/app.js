@@ -657,6 +657,10 @@ class PeopleCounter {
      * Update the count display
      */
     updateCountDisplay() {
+        // Apply smooth transition for count updates
+        this.totalCountEl.style.transition = "opacity 0.5s ease";
+        this.inCountEl.style.transition = "opacity 0.5s ease";
+        this.outCountEl.style.transition = "opacity 0.5s ease";
         this.totalCountEl.textContent = this.counts.total;
         this.inCountEl.textContent = this.counts.in;
         this.outCountEl.textContent = this.counts.out;
@@ -804,6 +808,12 @@ class PeopleCounter {
         while (this.logEl.children.length > 100) {
             this.logEl.removeChild(this.logEl.lastChild);
         }
+        // Fade out log entry after 5 seconds for a cleaner interface
+        setTimeout(() => {
+            if (entry.parentElement) {
+                entry.parentElement.removeChild(entry);
+            }
+        }, 5000);
 
         // Console log for debugging
         console.log(`[${type.toUpperCase()}] ${message}`);

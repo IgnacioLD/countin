@@ -337,12 +337,18 @@ class PersonTracker {
      */
     updateTrack(trackId, track, detection) {
         const [x, y, width, height] = detection.bbox;
-
-        const centroid = [
+        const newCentroid = [
             x + width / 2,
             y + height / 2
         ];
-
+        let smoothedCentroid = newCentroid;
+        if (track.history.length > 0) {
+            const lastCentroid = track.history[track.history.length - 1].centroid;
+            smoothedCentroid = [
+                Math.round(0.7 * newCentroid[0] + 0.3 * lastCentroid[0]),
+                Math.round(0.7 * newCentroid[1] + 0.3 * lastCentroid[1])
+            ];
+        }
         // Update last seen time
         track.lastSeen = Date.now();
 
@@ -353,7 +359,7 @@ class PersonTracker {
         track.history.push({
             timestamp: Date.now(),
             bbox: detection.bbox,
-            centroid,
+            centroid: smoothedCentroid,
             score: detection.score
         });
 

@@ -514,7 +514,7 @@ class LineManager {
         // If not actively drawing, add a label
         if (!isDrawing) {
             // Draw line name
-            this.ctx.font = '14px Arial';
+            this.ctx.font = '14px "Helvetica Neue", sans-serif';
             this.ctx.fillStyle = color;
 
             // Position the text in the middle of the line

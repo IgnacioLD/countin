@@ -63,14 +63,17 @@ class CountingVisualization {
         // Clear canvas
         ctx.clearRect(0, 0, width, height);
 
-        // Draw background
-        ctx.fillStyle = '#f8f9fa';
+        // Draw background with gradient for a refined look
+        let gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, '#ffffff');
+        gradient.addColorStop(1, '#e9ecef');
+        ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, width, height);
 
         // If no data, show message
         if (this.data.length === 0) {
             ctx.fillStyle = '#6c757d';
-            ctx.font = '14px Arial';
+            ctx.font = '16px "Helvetica Neue", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('No data available', width / 2, height / 2);
@@ -106,7 +109,7 @@ class CountingVisualization {
 
         // Draw Y axis labels
         ctx.fillStyle = '#6c757d';
-        ctx.font = '12px Arial';
+        ctx.font = '12px "Helvetica Neue", sans-serif';
         ctx.textAlign = 'right';
 
         for (let i = 0; i <= 5; i++) {

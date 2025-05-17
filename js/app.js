@@ -742,6 +742,7 @@ class PeopleCounter {
         // Create log entry element
         const entry = document.createElement('div');
         entry.className = `log-entry log-${type}`;
+        entry.style.fontFamily = '"Helvetica Neue", sans-serif';
 
         // Add timestamp
         const time = new Date().toLocaleTimeString();

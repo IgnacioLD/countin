@@ -209,16 +209,17 @@ class CountingVisualization {
         const legendX = padding.left + (width - padding.left - padding.right - legendWidth * legendItems.length) / 2;
         const legendY = 10;
 
-        // Draw dashboard title for clarity
-        ctx.font = '16px "Helvetica Neue", sans-serif';
-        ctx.fillStyle = '#333';
+        // Draw enhanced dashboard title
+        ctx.font = 'bold 20px "Helvetica Neue", sans-serif';
+        ctx.fillStyle = '#2c3e50';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.fillText("Dashboard Summary", width / 2, padding.top);
+        ctx.fillText("People Counter Dashboard", width / 2, padding.top);
         
-        // Set legend text style for improved readability
-        ctx.font = '12px "Helvetica Neue", sans-serif';
-        ctx.textAlign = 'left';
+        // Set upgraded legend text style for a modern look
+        ctx.font = '14px "Helvetica Neue", sans-serif';
+        ctx.fillStyle = '#2c3e50';
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
         legendItems.forEach((item, index) => {

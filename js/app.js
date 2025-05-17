@@ -98,14 +98,14 @@ class PeopleCounter {
      * Add test buttons for debugging
      */
     addTestButtons() {
-        // Create a debug controls container
+        // Create a debug controls container with modern style
         const debugControls = document.createElement('div');
         debugControls.className = 'debug-controls';
         debugControls.style.marginTop = '20px';
-        debugControls.style.padding = '15px';
-        debugControls.style.backgroundColor = '#f8f9fa';
-        debugControls.style.borderRadius = '8px';
-        debugControls.style.border = '1px solid #dee2e6';
+        debugControls.style.padding = '20px';
+        debugControls.style.background = 'linear-gradient(135deg, #f0f4f8, #d9e2ec)';
+        debugControls.style.borderRadius = '12px';
+        debugControls.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
 
         // Add a title
         const debugTitle = document.createElement('h3');

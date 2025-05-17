@@ -71,8 +71,7 @@ class PeopleCounter {
         // Set up event listeners
         this.setupEventListeners();
 
-        // Add test buttons for debugging
-        this.addTestButtons();
+        // Debug controls removed.
 
         // Check for camera access
         try {
@@ -97,77 +96,7 @@ class PeopleCounter {
     /**
      * Add test buttons for debugging
      */
-    addTestButtons() {
-        // Create a debug controls container with modern flex layout
-        const debugControls = document.createElement('div');
-        debugControls.className = 'debug-controls';
-        debugControls.style.display = 'flex';
-        debugControls.style.flexWrap = 'wrap';
-        debugControls.style.gap = '15px';
-        debugControls.style.justifyContent = 'center';
-        debugControls.style.alignItems = 'center';
-        debugControls.style.marginTop = '20px';
-        debugControls.style.padding = '20px';
-        debugControls.style.background = 'linear-gradient(135deg, #f0f4f8, #d9e2ec)';
-        debugControls.style.borderRadius = '12px';
-        debugControls.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
-
-        // Add a title
-        const debugTitle = document.createElement('h3');
-        debugTitle.textContent = 'Debug Controls';
-        debugControls.appendChild(debugTitle);
-
-        // Create buttons container
-        const buttonContainer = document.createElement('div');
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.flexWrap = 'wrap';
-        buttonContainer.style.gap = '10px';
-        buttonContainer.style.marginTop = '10px';
-        debugControls.appendChild(buttonContainer);
-
-        // Test Camera button
-        const testCameraBtn = document.createElement('button');
-        testCameraBtn.className = 'btn';
-        testCameraBtn.textContent = 'Test Camera';
-        testCameraBtn.addEventListener('click', () => this.initializeCamera());
-        buttonContainer.appendChild(testCameraBtn);
-
-        // Test Line button
-        const testLineBtn = document.createElement('button');
-        testLineBtn.className = 'btn';
-        testLineBtn.textContent = 'Draw Test Line';
-        testLineBtn.addEventListener('click', () => this.drawTestLine());
-        buttonContainer.appendChild(testLineBtn);
-
-        // Toggle Synthetic People button
-        const syntheticBtn = document.createElement('button');
-        syntheticBtn.className = 'btn';
-        syntheticBtn.textContent = 'Toggle Synthetic People';
-        syntheticBtn.addEventListener('click', () => {
-            window.useSyntheticDetections = !window.useSyntheticDetections;
-            this.log(`Synthetic people detection ${window.useSyntheticDetections ? 'enabled' : 'disabled'}`, 'info');
-            syntheticBtn.style.backgroundColor = window.useSyntheticDetections ? '#28a745' : '#6c757d';
-        });
-        buttonContainer.appendChild(syntheticBtn);
-
-        // Simulate Crossing button
-        const simulateBtn = document.createElement('button');
-        simulateBtn.className = 'btn';
-        simulateBtn.textContent = 'Simulate Crossing';
-        simulateBtn.addEventListener('click', () => this.simulateLineCrossing());
-        buttonContainer.appendChild(simulateBtn);
-
-        // Reset Counts button
-        const resetBtn = document.createElement('button');
-        resetBtn.className = 'btn';
-        resetBtn.textContent = 'Reset Counts';
-        resetBtn.addEventListener('click', () => this.resetCounts());
-        buttonContainer.appendChild(resetBtn);
-
-        // Add to the controls panel
-        const controlsPanel = document.querySelector('.controls-panel');
-        controlsPanel.appendChild(debugControls);
-    }
+    
 
     /**
      * Set up callbacks between components

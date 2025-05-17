@@ -494,7 +494,60 @@ class LineManager {
     
         // If perspective mode is enabled, draw a quadrilateral to simulate 3D perspective.
         // This simulates a perspective effect by making the top edge narrower (60% width) than the bottom edge.
-        if (window.enablePerspectiveBoxes) {
+        if (window.enablePerspective3D) {
+            // Define a vanishing point at the top center of the canvas
+            const vp = { x: this.canvas.width / 2, y: 0 };
+            // Adjust this factor (0.0 - 1.0) to control the strength of the perspective effect
+            const perspectiveFactor = 0.5;
+            // Original top corners
+            const topLeft = { x: x, y: y };
+            const topRight = { x: x + width, y: y };
+            // Interpolate top corners towards the vanishing point for a 3D effect
+            const newTopLeft = { 
+                x: topLeft.x + perspectiveFactor * (vp.x - topLeft.x), 
+                y: topLeft.y + perspectiveFactor * (vp.y - topLeft.y) 
+            };
+            const newTopRight = { 
+                x: topRight.x + perspectiveFactor * (vp.x - topRight.x), 
+                y: topRight.y + perspectiveFactor * (vp.y - topRight.y) 
+            };
+            // Bottom corners remain unchanged
+            const bottomRight = { x: x + width, y: y + height };
+            const bottomLeft = { x: x, y: y + height };
+    
+            this.ctx.beginPath();
+            this.ctx.moveTo(newTopLeft.x, newTopLeft.y);
+            this.ctx.lineTo(newTopRight.x, newTopRight.y);
+            this.ctx.lineTo(bottomRight.x, bottomRight.y);
+            this.ctx.lineTo(bottomLeft.x, bottomLeft.y);
+            this.ctx.closePath();
+    
+            this.ctx.strokeStyle = color;
+            this.ctx.lineWidth = 3;
+            this.ctx.stroke();
+    
+            if (!isDrawing) {
+                // Compute the center of the 3D-projected quadrilateral
+                const midX = (newTopLeft.x + newTopRight.x + bottomRight.x + bottomLeft.x) / 4;
+                const midY = (newTopLeft.y + newTopRight.y + bottomRight.y + bottomLeft.y) / 4;
+                const textMetrics = this.ctx.measureText(name);
+                const textWidth = textMetrics.width;
+                const textHeight = 14;
+    
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                this.ctx.fillRect(
+                    midX - textWidth / 2 - 5,
+                    midY - textHeight / 2 - 5,
+                    textWidth + 10,
+                    textHeight + 10
+                );
+    
+                this.ctx.fillStyle = color;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(name, midX, midY);
+            }
+        } else if (window.enablePerspectiveBoxes) {
             const perspectiveRatio = 0.6; // Top edge is 60% of bottom edge width
             const topWidth = width * perspectiveRatio;
             const dx = (width - topWidth) / 2;

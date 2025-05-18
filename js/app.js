@@ -775,6 +775,8 @@ class PeopleCounter {
 document.addEventListener('DOMContentLoaded', () => {
     // Start the application
     const app = new PeopleCounter();
+    // Initialize camera immediately when the website opens
+    app.initializeCamera();
 
     // Expose to window for debugging
     window.peopleCounter = app;

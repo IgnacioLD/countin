@@ -674,75 +674,53 @@ class LineManager {
         this.ctx.fill();
     }
 
-    /**
-     * Handle mouse down event
-     * @param {MouseEvent} event - Mouse event
-     */
     handleMouseDown(event) {
         if (!this.isDrawingEnabled) return;
+        
+        // For polygon drawing mode: accumulate clicks
+        if (!this.clickCorners) {
+            this.clickCorners = [];
+        }
     
-        // Get canvas-relative coordinates
         const rect = this.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
     
-        console.log('Mouse down at', x, y);
+        console.log('Polygon click at', x, y);
     
-        // Start drawing
-        this.isDrawing = true;
-        this.drawingLine = {
-            start: { x, y },
-            end: { x, y },
-            color: this.getRandomColor()
-        };
+        // Add clicked point to polygon corners
+        this.clickCorners.push({ x, y });
     
+        // Redraw to show temporary corners
         this.redrawLines();
+        // Draw temporary points
+        this.ctx.fillStyle = 'red';
+        for (const pt of this.clickCorners) {
+            this.ctx.beginPath();
+            this.ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+    
+        // If 4 corners have been selected, finalize polygon
+        if (this.clickCorners.length === 4) {
+            const newLine = {
+                corners: [...this.clickCorners],
+                color: this.getRandomColor(),
+                name: this.generateLineName('polygon'),
+                orientation: 'polygon'
+            };
+            this.addLine(newLine);
+            // Reset polygon drawing state
+            this.clickCorners = [];
+        }
     }
 
-    /**
-     * Handle mouse move event
-     * @param {MouseEvent} event - Mouse event
-     */
     handleMouseMove(event) {
-        if (!this.isDrawing) return;
-    
-        // Get canvas-relative coordinates
-        const rect = this.canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-    
-        // Update end point of drawing line
-        this.drawingLine.end = { x, y };
-    
-        // Redraw
-        this.redrawLines();
+        // No-op for polygon drawing mode
     }
 
     handleMouseUp(event) {
-        if (!this.isDrawing) return;
-    
-        const rect = this.canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-    
-        console.log('Mouse up at', x, y);
-    
-        this.drawingLine.end = { x, y };
-    
-        const rectWidth = Math.abs(this.drawingLine.end.x - this.drawingLine.start.x);
-        const rectHeight = Math.abs(this.drawingLine.end.y - this.drawingLine.start.y);
-    
-        if (rectWidth >= 20 && rectHeight >= 20) {
-            this.addLine(this.drawingLine);
-            console.log('Area added through mouse interaction');
-        } else {
-            console.log('Area too small, discarding');
-        }
-    
-        this.isDrawing = false;
-        this.drawingLine = null;
-    
-        this.redrawLines();
+        // No-op for polygon drawing mode
     }
 
     /**

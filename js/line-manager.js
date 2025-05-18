@@ -106,49 +106,43 @@ class LineManager {
 
     /**
      * Add a new line
-     * @param {Object} line - Line object with start and end points
+     * @param {Object} line - Line object with start and end points, or with polygon corners
      * @returns {Object} The added line with ID
      */
     addLine(line) {
-        // Generate line ID
         const lineId = this.nextLineId++;
-
-        // Calculate line orientation
-        const isVertical = Math.abs(line.end.x - line.start.x) < Math.abs(line.end.y - line.start.y);
-        const orientation = isVertical ? 'vertical' : 'horizontal';
-
-        // Generate line name if not provided
-        const name = line.name || this.generateLineName(orientation);
-
-        // Generate color if not provided
-        const color = line.color || this.getRandomColor();
-
-        // Initialize crossing counts
+        let newLine;
+        if (line.corners && Array.isArray(line.corners)) {
+            const name = line.name || this.generateLineName('polygon');
+            const color = line.color || this.getRandomColor();
+            newLine = {
+                id: lineId,
+                corners: [...line.corners],
+                name,
+                color,
+                orientation: 'polygon'
+            };
+        } else {
+            const isVertical = Math.abs(line.end.x - line.start.x) < Math.abs(line.end.y - line.start.y);
+            const orientation = isVertical ? 'vertical' : 'horizontal';
+            const name = line.name || this.generateLineName(orientation);
+            const color = line.color || this.getRandomColor();
+            newLine = {
+                id: lineId,
+                start: { ...line.start },
+                end: { ...line.end },
+                name,
+                color,
+                orientation
+            };
+        }
         this.lineCrossings[lineId] = { in: 0, out: 0 };
-
-        // Create line object
-        const newLine = {
-            id: lineId,
-            start: { ...line.start },
-            end: { ...line.end },
-            name,
-            color,
-            orientation
-        };
-
-        // Add to lines array
         this.lines.push(newLine);
-
-        // Trigger callback if exists
         if (this.onLineAdded) {
             this.onLineAdded(newLine);
         }
-
-        // Redraw lines
         this.redrawLines();
-
-        console.log(`Added line: ${name} (${orientation})`, newLine);
-
+        console.log(`Added line: ${newLine.name} (${newLine.orientation})`, newLine);
         return newLine;
     }
 

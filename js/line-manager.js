@@ -680,56 +680,148 @@ class LineManager {
      */
     handleMouseDown(event) {
         if (!this.isDrawingEnabled) return;
-        
+    
+        // Get canvas-relative coordinates
         const rect = this.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
-        console.log('Corner clicked at', x, y);
-
-        // Push clicked corner
-        this.clickCorners.push({ x, y });
-        // Redraw to show current markers (if implemented in redrawLines)
+    
+        console.log('Mouse down at', x, y);
+    
+        // Start drawing
+        this.isDrawing = true;
+        this.drawingLine = {
+            start: { x, y },
+            end: { x, y },
+            color: this.getRandomColor()
+        };
+    
         this.redrawLines();
-        
-        // If four corners have been selected, create the polygon line
-        if (this.clickCorners.length === 4) {
-            const newLine = {
-                corners: [...this.clickCorners],
-                color: this.getRandomColor(),
-                name: this.generateLineName('polygon'),
-                orientation: 'polygon'
-            };
-            this.addLine(newLine);
-            // Reset corners after adding the line
-            this.clickCorners = [];
-        }
     }
 
     /**
      * Handle mouse move event
      * @param {MouseEvent} event - Mouse event
      */
-    handleMouseMove(event) { /* No-op in four-click mode */ }
+    handleMouseMove(event) {
+        if (!this.isDrawing) return;
+    
+        // Get canvas-relative coordinates
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+    
+        // Update end point of drawing line
+        this.drawingLine.end = { x, y };
+    
+        // Redraw
+        this.redrawLines();
+    }
 
-    handleMouseUp(event) { /* No-op in four-click mode */ }
+    handleMouseUp(event) {
+        if (!this.isDrawing) return;
+    
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+    
+        console.log('Mouse up at', x, y);
+    
+        this.drawingLine.end = { x, y };
+    
+        const rectWidth = Math.abs(this.drawingLine.end.x - this.drawingLine.start.x);
+        const rectHeight = Math.abs(this.drawingLine.end.y - this.drawingLine.start.y);
+    
+        if (rectWidth >= 20 && rectHeight >= 20) {
+            this.addLine(this.drawingLine);
+            console.log('Area added through mouse interaction');
+        } else {
+            console.log('Area too small, discarding');
+        }
+    
+        this.isDrawing = false;
+        this.drawingLine = null;
+    
+        this.redrawLines();
+    }
 
     /**
      * Handle mouse leave event
      * @param {MouseEvent} event - Mouse event
      */
-    handleMouseLeave(event) { /* No-op in four-click mode */ }
+    handleMouseLeave(event) {
+        if (!this.isDrawing) return;
+    
+        // Cancel drawing
+        this.isDrawing = false;
+        this.drawingLine = null;
+    
+        // Redraw
+        this.redrawLines();
+    }
 
     /**
      * Handle touch start event
      * @param {TouchEvent} event - Touch event
      */
-    handleTouchStart(event) { /* No-op in four-click mode */ }
+    handleTouchStart(event) {
+        if (!this.isDrawingEnabled) return;
+    
+        // Prevent default to avoid scrolling
+        event.preventDefault();
+    
+        const touch = event.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+    
+        // Start drawing
+        this.isDrawing = true;
+        this.drawingLine = {
+            start: { x, y },
+            end: { x, y },
+            color: this.getRandomColor()
+        };
+    
+        this.redrawLines();
+    }
 
     /**
      * Handle touch move event
      * @param {TouchEvent} event - Touch event
      */
-    handleTouchMove(event) { /* No-op in four-click mode */ }
+    handleTouchMove(event) {
+        if (!this.isDrawing) return;
+    
+        event.preventDefault();
+        const touch = event.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+    
+        this.drawingLine.end = { x, y };
+    
+        this.redrawLines();
+    }
 
-    handleTouchEnd(event) { /* No-op in four-click mode */ }
+    handleTouchEnd(event) {
+        if (!this.isDrawing) return;
+    
+        const dx = this.drawingLine.end.x - this.drawingLine.start.x;
+        const dy = this.drawingLine.end.y - this.drawingLine.start.y;
+        const rectWidth = Math.abs(dx);
+        const rectHeight = Math.abs(dy);
+    
+        if (rectWidth >= 20 && rectHeight >= 20) {
+            this.addLine(this.drawingLine);
+            console.log('Area added through touch interaction');
+        } else {
+            console.log('Area too small, discarding');
+        }
+    
+        this.isDrawing = false;
+        this.drawingLine = null;
+    
+        this.redrawLines();
+    }
 }

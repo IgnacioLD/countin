@@ -284,6 +284,7 @@ class PeopleCounter {
             
             // Enable line manager for setup and inform the user
             this.lineManager.enableDrawing();
+            this.lineCanvas.style.pointerEvents = "auto";
             this.log('Setup mode active: Click and drag on the canvas to draw counting areas. Use the pencil icon to cancel or restart drawing if needed.', 'info');
         } else if (mode === 'counting') {
             // Check if we have at least one line; if not, automatically add a default counting line
@@ -307,6 +308,7 @@ class PeopleCounter {
 
             // Disable line drawing during counting
             this.lineManager.disableDrawing();
+            this.lineCanvas.style.pointerEvents = "none";
 
             // Start counting if not already running
             if (!this.isRunning) {

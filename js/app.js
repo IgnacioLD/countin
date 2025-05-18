@@ -34,6 +34,11 @@ class PeopleCounter {
 
         // Initialize components
         this.lineManager = new LineManager(this.lineCanvas);
+        // Make the line canvas an overlay on top of the video feed
+        this.lineCanvas.style.position = "absolute";
+        this.lineCanvas.style.top = this.video.offsetTop + "px";
+        this.lineCanvas.style.left = this.video.offsetLeft + "px";
+        this.lineCanvas.style.pointerEvents = "none";
         this.tracker = new PersonTracker({
             confidenceThreshold: 0.4,
             maxDisappearedFrames: 15,

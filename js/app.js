@@ -286,10 +286,17 @@ class PeopleCounter {
             this.lineManager.enableDrawing();
             this.log('Setup mode active: Click and drag on the canvas to draw counting areas. Use the pencil icon to cancel or restart drawing if needed.', 'info');
         } else if (mode === 'counting') {
-            // Check if we have at least one line
+            // Check if we have at least one line; if not, automatically add a default counting line
             if (this.lineManager.getLines().length === 0) {
-                this.log('Please draw at least one counting line before starting counting mode', 'error');
-                return;
+                this.log('No counting line detected. Adding default counting line.', 'info');
+                const videoWidth = this.video.videoWidth || this.video.clientWidth;
+                const videoHeight = this.video.videoHeight || this.video.clientHeight;
+                this.lineManager.addLine({
+                    start: { x: videoWidth / 2, y: 0 },
+                    end: { x: videoWidth / 2, y: videoHeight },
+                    color: '#FF3333',
+                    name: 'Default Counting Line'
+                });
             }
 
             // Switch to counting mode

@@ -3,8 +3,29 @@
  */
 
 // Use environment variable for API URL, fallback to relative path for dev
-const API_URL = import.meta.env.VITE_API_URL || '';
+let API_URL = import.meta.env.VITE_API_URL || '';
+
+// Runtime check: if on HTTPS but API URL is HTTP, fix it
+if (window.location.protocol === 'https:' && API_URL.startsWith('http://')) {
+    API_URL = API_URL.replace('http://', 'https://');
+    console.warn('Fixed HTTP API URL to HTTPS:', API_URL);
+}
+
+// If no API URL is set and we're on production, construct it from hostname
+if (!API_URL && window.location.hostname.includes('countin.ignacio.tech')) {
+    API_URL = 'https://api.countin.ignacio.tech';
+    console.log('Auto-detected API URL:', API_URL);
+}
+
 const API_BASE = `${API_URL}/api/v1`;
+
+// Log the API configuration for debugging
+console.log('API Configuration:', {
+    'VITE_API_URL': import.meta.env.VITE_API_URL,
+    'API_URL': API_URL,
+    'API_BASE': API_BASE,
+    'window.location': window.location.href
+});
 
 export class ApiService {
     constructor() {

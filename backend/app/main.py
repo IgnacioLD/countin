@@ -27,6 +27,7 @@ app = FastAPI(
     version=settings.VERSION,
     description=settings.DESCRIPTION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    redirect_slashes=False,  # Disable automatic slash redirects that break CORS
 )
 
 # Configure CORS

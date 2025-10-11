@@ -1509,6 +1509,34 @@ body.drawing-active #line-canvas {
     padding: 2rem 2.5rem;
     background: white;
     min-height: 60vh;
+    transition: padding 0.3s ease;
+    position: relative;
+}
+
+.camera-view.sidebar-hidden {
+    padding: 0;
+}
+
+.camera-view.sidebar-hidden #camera-connected {
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.sidebar-toggle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+    padding: 0.5rem;
+    min-width: auto;
+    background: var(--primary-color);
+    color: white;
+}
+
+.camera-view.sidebar-hidden .sidebar-toggle {
+    right: auto;
+    left: 1rem;
 }
 
 .camera-pairing {
@@ -1551,6 +1579,7 @@ body.drawing-active #line-canvas {
     max-width: 600px;
     margin: 0 auto;
     padding: 3rem 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .connection-status {

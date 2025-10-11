@@ -112,6 +112,42 @@ class CountInApp {
         // Set up event listeners
         this.setupEventListeners();
 
+        // Check for QR code pairing URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const pairingToken = urlParams.get('pair');
+
+        if (pairingToken) {
+            this.log('QR code detected, fetching pairing code...', 'info');
+            try {
+                // Fetch hub details using the token
+                const response = await fetch(`${apiService.baseUrl}/hubs/token/${pairingToken}`);
+                if (response.ok) {
+                    const hub = await response.json();
+                    // Switch to camera mode and auto-fill pairing code
+                    this.selectMode('camera');
+
+                    // Auto-fill the pairing code
+                    setTimeout(() => {
+                        const pairingInput = document.getElementById('pairing-code-input');
+                        if (pairingInput) {
+                            pairingInput.value = hub.pairing_code;
+                            this.log('Pairing code auto-filled from QR code', 'success');
+                        }
+                    }, 500);
+
+                    // Clear URL parameter
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    this.log('Initialization complete.', 'success');
+                    return;
+                } else {
+                    this.log('Invalid or expired pairing link', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to fetch pairing info:', error);
+                this.log('Failed to process pairing link', 'error');
+            }
+        }
+
         // Check for saved app mode
         const savedMode = localStorage.getItem('countin-app-mode');
         const savedCameraStationId = localStorage.getItem('countin-camera-station-id');
@@ -1285,6 +1321,16 @@ class CountInApp {
             // Set up disconnect button
             const disconnectBtn = document.getElementById('disconnect-camera-btn');
             disconnectBtn.addEventListener('click', () => this.disconnectCamera());
+
+            // Sidebar toggle for camera view
+            const toggleSidebarBtn = document.getElementById('toggle-camera-sidebar');
+            const cameraView = document.getElementById('camera-view');
+            toggleSidebarBtn.addEventListener('click', () => {
+                cameraView.classList.toggle('sidebar-hidden');
+                const icon = toggleSidebarBtn.querySelector('.toggle-icon');
+                icon.textContent = cameraView.classList.contains('sidebar-hidden') ? '>' : '<';
+                toggleSidebarBtn.title = cameraView.classList.contains('sidebar-hidden') ? 'Show sidebar' : 'Hide sidebar';
+            });
 
             this.cameraListenersSet = true;
         }

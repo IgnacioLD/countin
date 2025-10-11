@@ -257,6 +257,10 @@
 
             <!-- Connected Screen -->
             <div id="camera-connected" class="camera-connected" style="display: none;">
+                <button id="toggle-camera-sidebar" class="btn btn-icon sidebar-toggle" title="Hide sidebar">
+                    <span class="toggle-icon">&lt;</span>
+                </button>
+
                 <div class="connection-status connected">
                     <span class="status-dot"></span>
                     <span>Connected to Hub</span>
@@ -279,7 +283,7 @@
                 </div>
 
                 <div class="camera-note">
-                    <p>📹 This camera is sending count data only. No video is transmitted.</p>
+                    <p>This camera is sending count data only. No video is transmitted.</p>
                 </div>
 
                 <button id="disconnect-camera-btn" class="btn btn-secondary btn-full">Disconnect</button>

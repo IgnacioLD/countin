@@ -60,6 +60,17 @@ def get_hub_by_code(pairing_code: str, db: Session = Depends(get_db)):
     return hub
 
 
+@router.get("/token/{pairing_token}", response_model=HubSessionResponse)
+def get_hub_by_token(pairing_token: str, db: Session = Depends(get_db)):
+    """Get hub session by pairing token (for QR code scanning)"""
+    hub = db.query(HubSession).filter(HubSession.pairing_token == pairing_token).first()
+    if not hub:
+        raise HTTPException(status_code=404, detail="Hub session not found")
+    if not hub.is_active:
+        raise HTTPException(status_code=400, detail="Hub session is no longer active")
+    return hub
+
+
 @router.patch("/{hub_id}", response_model=HubSessionResponse)
 def update_hub_session(hub_id: int, hub_data: HubSessionUpdate, db: Session = Depends(get_db)):
     """Update a hub session"""

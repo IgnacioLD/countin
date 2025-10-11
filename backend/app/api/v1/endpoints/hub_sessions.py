@@ -10,6 +10,7 @@ from datetime import datetime
 router = APIRouter()
 
 
+@router.post("", response_model=HubSessionWithToken, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=HubSessionWithToken, status_code=status.HTTP_201_CREATED)
 def create_hub_session(hub_data: HubSessionCreate, db: Session = Depends(get_db)):
     """Create a new hub dashboard session"""
@@ -26,6 +27,7 @@ def create_hub_session(hub_data: HubSessionCreate, db: Session = Depends(get_db)
     return hub
 
 
+@router.get("", response_model=List[HubSessionResponse])
 @router.get("/", response_model=List[HubSessionResponse])
 def list_hub_sessions(
     skip: int = 0, limit: int = 100, active_only: bool = False, db: Session = Depends(get_db)

@@ -86,6 +86,7 @@ class CountInApp {
             labels: [],
             datasets: []
         };
+        this.lastChartUpdate = { total_in: 0, total_out: 0 };
 
         // Camera mode state
         this.cameraStation = null;
@@ -1209,6 +1210,21 @@ class CountInApp {
 
         // Update hub stats display
         this.updateHubStats();
+
+        // Calculate new totals and update chart only if counts changed
+        let totalIn = 0;
+        let totalOut = 0;
+        for (const [cameraId, cameraData] of this.connectedCameras.entries()) {
+            totalIn += cameraData.total_in || 0;
+            totalOut += cameraData.total_out || 0;
+        }
+
+        // Only update chart if counts actually changed
+        if (totalIn !== this.lastChartUpdate.total_in || totalOut !== this.lastChartUpdate.total_out) {
+            this.updateHubChart(totalIn, totalOut);
+            this.lastChartUpdate.total_in = totalIn;
+            this.lastChartUpdate.total_out = totalOut;
+        }
     }
 
     async pollHubStats() {
@@ -1222,8 +1238,12 @@ class CountInApp {
             document.getElementById('hub-total-out').textContent = stats.total_out;
             document.getElementById('hub-cameras-connected').textContent = stats.connected_cameras;
 
-            // Update hub overview chart
-            this.updateHubChart(stats.total_in, stats.total_out);
+            // Only update chart if counts changed (someone crossed a line)
+            if (stats.total_in !== this.lastChartUpdate.total_in || stats.total_out !== this.lastChartUpdate.total_out) {
+                this.updateHubChart(stats.total_in, stats.total_out);
+                this.lastChartUpdate.total_in = stats.total_in;
+                this.lastChartUpdate.total_out = stats.total_out;
+            }
 
             // Get camera list
             const camerasResponse = await fetch(`${apiService.baseUrl}/cameras/hub/${this.hubSession.id}`);

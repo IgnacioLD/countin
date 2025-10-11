@@ -5,17 +5,18 @@ WORKDIR /app
 # Accept build args
 ARG VITE_API_URL=http://localhost:8000
 
-# Copy package files
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies and serve
-RUN npm ci && npm install -g serve
+# Install dependencies in one step
+RUN npm ci --only=production && npm install -g serve
 
 # Copy source files
 COPY . .
 
 # Set environment variables for build
 ENV VITE_API_URL=$VITE_API_URL
+ENV NODE_ENV=production
 
 # Build the application
 RUN npm run build
@@ -24,7 +25,7 @@ RUN npm run build
 ENV PORT=3000
 
 # Expose port
-EXPOSE ${PORT}
+EXPOSE 3000
 
-# Serve built files
-CMD ["sh", "-c", "serve -s dist -l ${PORT} --no-clipboard"]
+# Serve built files with longer timeout
+CMD ["serve", "-s", "dist", "-l", "3000", "--no-clipboard"]

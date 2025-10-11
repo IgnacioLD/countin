@@ -507,6 +507,7 @@ class CountInApp {
                 // Clear saved mode
                 localStorage.removeItem('countin-app-mode');
                 localStorage.removeItem('countin-hub-session-id');
+                localStorage.removeItem('countin-hub-pairing-token');
                 localStorage.removeItem('countin-camera-station-id');
 
                 // Show onboarding to select mode again
@@ -950,8 +951,9 @@ class CountInApp {
                 codeElement.classList.add('code-hidden');
             }
 
-            // Save to localStorage
+            // Save to localStorage (including pairing_token for QR code)
             localStorage.setItem('countin-hub-session-id', this.hubSession.id);
+            localStorage.setItem('countin-hub-pairing-token', this.hubSession.pairing_token);
 
             this.log(`Hub created successfully with code: ${this.hubPairingCodeActual}`, 'success');
 
@@ -1694,6 +1696,12 @@ class CountInApp {
             this.hubPairingCodeActual = this.hubSession.pairing_code;
             this.hubPairingCodeVisible = false;
 
+            // Restore pairing_token from localStorage (needed for QR code)
+            const savedPairingToken = localStorage.getItem('countin-hub-pairing-token');
+            if (savedPairingToken) {
+                this.hubSession.pairing_token = savedPairingToken;
+            }
+
             // Show hub view
             const mainContent = document.querySelector('.main-content');
             const visualizationPanel = document.querySelector('.visualization-panel');
@@ -1720,6 +1728,7 @@ class CountInApp {
         } catch (error) {
             this.log('Failed to restore hub session: ' + error.message, 'error');
             localStorage.removeItem('countin-hub-session-id');
+            localStorage.removeItem('countin-hub-pairing-token');
             localStorage.removeItem('countin-app-mode');
         }
     }

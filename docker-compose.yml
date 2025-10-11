@@ -23,8 +23,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://countin:countin@db:5432/countin}
       ENV: ${ENV:-production}
       BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-https://countin.ignacio.tech,https://*.countin.ignacio.tech}
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     networks:
       - countin-network
     restart: unless-stopped
@@ -37,8 +37,8 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-https://api.countin.ignacio.tech}
     container_name: countin-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     networks:
       - countin-network
     restart: unless-stopped

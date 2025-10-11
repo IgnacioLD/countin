@@ -232,6 +232,9 @@ class CountInApp {
             this.counts.total = this.counts.in + this.counts.out;
             this.updateCountDisplay();
 
+            // Update individual line counts in UI
+            this.updateLineList();
+
             // Add to visualization
             this.visualization.addDataPoint(this.counts);
 

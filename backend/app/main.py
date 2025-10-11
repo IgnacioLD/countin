@@ -4,6 +4,9 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.api import api_router
 
+# Import all models to register them with SQLAlchemy
+from app.models import Session, CountingLine, CrossingEvent, CountSnapshot
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
@@ -18,10 +21,11 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=settings.get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=r"https://.*\.countin\.ignacio\.tech"
 )
 
 # Include API routes

@@ -23,4 +23,4 @@ class CountSnapshot(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
-    session = relationship("Session", back_populates="snapshots")
+    session = relationship("Session", back_populates="count_snapshots")

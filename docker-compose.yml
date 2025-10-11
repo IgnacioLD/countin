@@ -1,20 +1,22 @@
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database (Internal only - not exposed to host)
   db:
     image: postgres:15-alpine
     container_name: countin-db
     environment:
-      POSTGRES_USER: countin
-      POSTGRES_PASSWORD: countin
-      POSTGRES_DB: countin
+      POSTGRES_USER: ${POSTGRES_USER:-countin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-countin}
+      POSTGRES_DB: ${POSTGRES_DB:-countin}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U countin"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-countin}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - countin-network
     restart: unless-stopped
 
   # FastAPI Backend
@@ -24,13 +26,16 @@ services:
       dockerfile: Dockerfile
     container_name: countin-backend
     environment:
-      DATABASE_URL: postgresql://countin:countin@db:5432/countin
-      BACKEND_CORS_ORIGINS: "*"
-    ports:
-      - "8000:8000"
+      DATABASE_URL: ${DATABASE_URL:-postgresql://countin:countin@db:5432/countin}
+      ENV: ${ENV:-production}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-https://countin.ignacio.tech,https://*.countin.ignacio.tech}
+    expose:
+      - "8000"
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - countin-network
     restart: unless-stopped
 
   # Frontend (Vite)
@@ -38,15 +43,21 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://api.countin.ignacio.tech}
     container_name: countin-frontend
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     depends_on:
       - backend
-    environment:
-      - VITE_API_URL=http://backend:8000
+    networks:
+      - countin-network
     restart: unless-stopped
 
 volumes:
   postgres_data:
     driver: local
+
+networks:
+  countin-network:
+    driver: bridge

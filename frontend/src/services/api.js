@@ -2,7 +2,9 @@
  * API Service for backend communication
  */
 
-const API_BASE = '/api/v1';
+// Use environment variable for API URL, fallback to relative path for dev
+const API_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE = `${API_URL}/api/v1`;
 
 export class ApiService {
     constructor() {

@@ -1,268 +1,192 @@
-# Deployment Guide
+# CountIn Deployment Guide
+
+## Coolify Deployment (Production)
+
+This application is fully configured for Coolify deployment with Docker Compose.
+
+### Prerequisites
+
+- Coolify instance running
+- Two subdomains configured:
+  - `countin.ignacio.tech` (frontend)
+  - `api.countin.ignacio.tech` (backend)
+
+### Architecture
+
+```
+Internet
+   │
+   ├─→ countin.ignacio.tech ──────→ Frontend (port 3000)
+   │                                     │
+   └─→ api.countin.ignacio.tech ────→ Backend (port 8000)
+                                          │
+                                          └─→ Database (internal only)
+```
+
+### Step 1: Environment Variables
+
+Set these in your Coolify project settings:
+
+```bash
+# Database Configuration
+POSTGRES_USER=countin
+POSTGRES_PASSWORD=<generate-secure-random-password>
+POSTGRES_DB=countin
+
+# Backend Configuration
+DATABASE_URL=postgresql://countin:<your-password>@db:5432/countin
+ENV=production
+BACKEND_CORS_ORIGINS=https://countin.ignacio.tech,https://*.countin.ignacio.tech
+
+# Frontend Configuration (Build-time)
+VITE_API_URL=https://api.countin.ignacio.tech
+```
+
+**Important Notes:**
+- Use a strong random password for `POSTGRES_PASSWORD`
+- The `DATABASE_URL` must match the database credentials
+- `VITE_API_URL` must be set as a **build argument** in Coolify
+
+### Step 2: Coolify Configuration
+
+1. **Create New Project** in Coolify
+2. **Connect Git Repository** (main branch)
+3. **Select Docker Compose** deployment type
+4. **Set Compose File** to `docker-compose.yml`
+5. **Configure Domains**:
+   - Service `frontend` → `countin.ignacio.tech`
+   - Service `backend` → `api.countin.ignacio.tech`
+6. **Add Environment Variables** from Step 1
+7. **Deploy!**
+
+### Step 3: Service Routing
+
+Coolify will automatically:
+- Expose port 3000 from `frontend` service → `countin.ignacio.tech`
+- Expose port 8000 from `backend` service → `api.countin.ignacio.tech`
+- Keep database internal (no external exposure)
+- Generate SSL certificates via Let's Encrypt
+
+### Services Overview
+
+| Service | Port | Public Access | Description |
+|---------|------|---------------|-------------|
+| `frontend` | 3000 | ✓ countin.ignacio.tech | Vite-built SPA |
+| `backend` | 8000 | ✓ api.countin.ignacio.tech | FastAPI REST API |
+| `db` | 5432 | ✗ Internal only | PostgreSQL 15 |
+
+### Persistent Storage
+
+- **Volume**: `postgres_data` - Database persistence
+- **Backup**: Configure Coolify to backup this volume regularly
+
+### Health Checks
+
+- Database health check runs every 10s
+- Backend waits for database to be healthy before starting
+- Frontend waits for backend to be available
+
+### API Documentation
+
+Once deployed, API docs are available at:
+- **Swagger UI**: `https://api.countin.ignacio.tech/docs`
+- **ReDoc**: `https://api.countin.ignacio.tech/redoc`
+
+---
 
 ## Local Development
 
+### Quick Start
+
 ```bash
-# Start development environment
+# Start all services with hot-reload
 docker-compose -f docker-compose.dev.yml up
 
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:8000
-# API Docs: http://localhost:8000/docs
-# Database: localhost:5432
+# Or rebuild and start
+docker-compose -f docker-compose.dev.yml up --build
 ```
 
-## Local Production Test
+### Access Points
+
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Database**: localhost:5432
+
+### Development Configuration
+
+In development mode (`ENV=development`):
+- CORS allows localhost origins automatically
+- Backend runs with `--reload` flag
+- Frontend proxies API requests to backend
+- Database port exposed for direct access
+
+### Environment Variables (Development)
+
+Create `.env` file:
 
 ```bash
-# Build and run production containers
-docker-compose up -d
-
-# Frontend: http://localhost:3000
-# Backend: http://localhost:8000
-```
-
-## Coolify Deployment
-
-### 1. Prerequisites
-- Coolify instance running
-- Docker installed on server
-- Git repository accessible
-
-### 2. Setup in Coolify
-
-#### Option A: Docker Compose (Recommended)
-
-1. **Create New Resource** → **Docker Compose**
-2. **Repository**: Point to your git repo
-3. **Docker Compose File**: Select `docker-compose.yml`
-4. **Environment Variables**:
-   ```env
-   POSTGRES_PASSWORD=your-secure-password
-   DATABASE_URL=postgresql://countin:your-secure-password@db:5432/countin
-   BACKEND_CORS_ORIGINS=https://your-domain.com
-   ```
-5. **Deploy**: Coolify will handle the rest
-
-#### Option B: Separate Services
-
-**Database Service**:
-- Type: PostgreSQL 15
-- Database: countin
-- Username: countin
-- Password: (set secure password)
-
-**Backend Service**:
-- Type: Dockerfile
-- Dockerfile Path: `./backend/Dockerfile`
-- Port: 8000
-- Environment Variables:
-  ```env
-  DATABASE_URL=postgresql://countin:password@db:5432/countin
-  BACKEND_CORS_ORIGINS=https://your-domain.com
-  ```
-
-**Frontend Service**:
-- Type: Dockerfile
-- Dockerfile Path: `./frontend/Dockerfile`
-- Port: 3000
-- Environment Variables:
-  ```env
-  VITE_API_URL=https://api.your-domain.com
-  ```
-
-### 3. Domain Configuration
-
-In Coolify:
-- Frontend: `your-domain.com` → frontend service (port 3000)
-- Backend: `api.your-domain.com` → backend service (port 8000)
-
-Coolify's Traefik will handle:
-- SSL certificates (automatic Let's Encrypt)
-- Reverse proxy
-- Load balancing
-
-### 4. Health Checks
-
-Coolify automatically monitors:
-- Database: PostgreSQL health check
-- Backend: `/health` endpoint
-- Frontend: Port 3000 availability
-
-## Manual VPS Deployment
-
-```bash
-# SSH into your VPS
-ssh user@your-vps-ip
-
-# Clone repository
-git clone https://github.com/your-username/countin.git
-cd countin
-
-# Configure environment
-cp .env.example .env
-nano .env  # Update DATABASE_URL and POSTGRES_PASSWORD
-
-# Start services
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f
-
-# Check status
-docker-compose ps
-```
-
-### Nginx Reverse Proxy (if not using Coolify)
-
-```nginx
-# /etc/nginx/sites-available/countin
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    # Frontend
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # Backend API
-    location /api/ {
-        proxy_pass http://localhost:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    # WebSocket
-    location /ws/ {
-        proxy_pass http://localhost:8000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
-
-## Environment Variables
-
-### Backend
-```env
-DATABASE_URL=postgresql://user:password@host:5432/dbname
-BACKEND_CORS_ORIGINS=https://your-domain.com,https://www.your-domain.com
-API_V1_STR=/api/v1
-PROJECT_NAME=CountIn API
-```
-
-### Frontend
-```env
-VITE_API_URL=https://api.your-domain.com
-```
-
-### Database
-```env
+# Database
 POSTGRES_USER=countin
-POSTGRES_PASSWORD=secure-password
+POSTGRES_PASSWORD=countin
 POSTGRES_DB=countin
+
+# Backend
+DATABASE_URL=postgresql://countin:countin@db:5432/countin
+ENV=development
+
+# Frontend (leave empty to use proxy)
+VITE_API_URL=
 ```
 
-## Maintenance
-
-### View Logs
-```bash
-docker-compose logs -f [service-name]
-```
-
-### Restart Services
-```bash
-docker-compose restart [service-name]
-```
-
-### Update Application
-```bash
-git pull
-docker-compose down
-docker-compose build
-docker-compose up -d
-```
-
-### Backup Database
-```bash
-docker-compose exec db pg_dump -U countin countin > backup.sql
-```
-
-### Restore Database
-```bash
-docker-compose exec -T db psql -U countin countin < backup.sql
-```
+---
 
 ## Troubleshooting
 
-### Frontend can't connect to backend
-- Check `BACKEND_CORS_ORIGINS` includes your frontend domain
-- Verify backend is running: `docker-compose ps`
-- Check backend logs: `docker-compose logs backend`
+### Frontend Can't Reach Backend
 
-### Database connection fails
-- Check `DATABASE_URL` format
-- Ensure database is healthy: `docker-compose ps db`
-- Verify credentials match between services
+- Verify `VITE_API_URL` is set correctly as build argument
+- Check CORS settings in backend (should include your frontend domain)
+- Verify backend service is running: `docker-compose ps`
 
-### Camera not detected
-- HTTPS required for camera access (except localhost)
-- Check browser permissions
-- Verify webcam is connected
+### Database Connection Issues
 
-### Performance issues
-- Reduce `detectionInterval` in frontend config
-- Use lighter ML model (COCO-SSD lite_mobilenet_v2)
-- Limit frame processing rate
-- Check server resources: `docker stats`
+- Check `DATABASE_URL` format: `postgresql://user:pass@host:port/db`
+- Verify database health: `docker-compose exec db pg_isready -U countin`
+- Check logs: `docker-compose logs db`
+
+### Backend Not Starting
+
+- Check database is healthy first
+- Review backend logs: `docker-compose logs backend`
+- Verify all Python dependencies are installed
+
+### Building Issues
+
+- Clear Docker cache: `docker-compose build --no-cache`
+- Remove volumes: `docker-compose down -v` (WARNING: deletes data)
+
+---
+
+## Updating Deployment
+
+```bash
+# In Coolify, simply push to main branch
+git push origin main
+
+# Coolify will automatically:
+# 1. Pull latest code
+# 2. Rebuild changed services
+# 3. Rolling restart
+```
+
+---
 
 ## Security Checklist
 
-- [ ] Change default PostgreSQL password
-- [ ] Set secure `BACKEND_CORS_ORIGINS` (not "*")
-- [ ] Enable HTTPS (Coolify does this automatically)
+- [ ] Strong database password set
+- [ ] CORS configured for specific domains only
+- [ ] SSL certificates active (handled by Coolify)
+- [ ] Database not exposed publicly
 - [ ] Regular backups configured
-- [ ] Monitor logs for suspicious activity
-- [ ] Keep Docker images updated
-- [ ] Restrict database port (only internal Docker network)
-
-## Monitoring
-
-### Application Health
-```bash
-# Backend health
-curl http://localhost:8000/health
-
-# Database connection
-docker-compose exec db psql -U countin -c "SELECT 1"
-
-# Check all services
-docker-compose ps
-```
-
-### Resource Usage
-```bash
-# Container stats
-docker stats
-
-# Disk usage
-docker system df
-```
-
-## Scaling Considerations
-
-For high-traffic deployments:
-1. Use PostgreSQL connection pooling (PgBouncer)
-2. Add Redis for caching
-3. Deploy multiple frontend/backend replicas
-4. Use CDN for static assets
-5. Implement rate limiting
-6. Add monitoring (Prometheus + Grafana)
+- [ ] Environment variables secured in Coolify

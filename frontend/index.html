@@ -43,9 +43,38 @@
                 <div class="onboarding-step active" data-step="1">
                     <div class="welcome-header">
                         <h1>CountIn</h1>
-                        <p class="tagline">AI-powered people counting</p>
+                        <p class="tagline">Privacy-focused people counting</p>
                     </div>
                     <button class="btn btn-primary btn-large" onclick="window.countInApp.nextOnboardingStep()">Start Setup</button>
+                </div>
+
+                <!-- Step 2: Choose Mode -->
+                <div class="onboarding-step" data-step="2">
+                    <h2>Choose Your Mode</h2>
+                    <p class="mode-description">How would you like to use CountIn?</p>
+
+                    <div class="mode-selection">
+                        <button class="mode-card" onclick="window.countInApp.selectMode('standalone')">
+                            <div class="mode-icon">📊</div>
+                            <h3>Standalone</h3>
+                            <p>Single camera counting</p>
+                            <span class="mode-tag">Quick Start</span>
+                        </button>
+
+                        <button class="mode-card" onclick="window.countInApp.selectMode('hub')">
+                            <div class="mode-icon">🎯</div>
+                            <h3>Hub Dashboard</h3>
+                            <p>Monitor multiple cameras</p>
+                            <span class="mode-tag">Multi-Location</span>
+                        </button>
+
+                        <button class="mode-card" onclick="window.countInApp.selectMode('camera')">
+                            <div class="mode-icon">📱</div>
+                            <h3>Camera Station</h3>
+                            <p>Connect to a hub</p>
+                            <span class="mode-tag">Privacy First</span>
+                        </button>
+                    </div>
                 </div>
 
             </div>
@@ -66,6 +95,14 @@
                 <h2>Settings</h2>
 
                 <div class="settings-section">
+                    <h3>Application Mode</h3>
+                    <div class="current-mode-display">
+                        <span id="current-app-mode">Standalone</span>
+                    </div>
+                    <button id="change-mode-btn" class="btn btn-full">Change Mode</button>
+                </div>
+
+                <div class="settings-section">
                     <h3>Camera</h3>
                     <button id="change-camera-btn-modal" class="btn btn-full">Change Camera</button>
                     <div id="camera-info-modal" class="camera-info"></div>
@@ -75,8 +112,8 @@
                     </label>
                 </div>
 
-                <div class="settings-section">
-                    <h3>Mode</h3>
+                <div class="settings-section" id="counting-mode-section">
+                    <h3>Counting Mode</h3>
                     <div class="mode-toggle">
                         <button id="setup-mode-btn" class="btn btn-mode active">Setup</button>
                         <button id="counting-mode-btn" class="btn btn-mode">Counting</button>
@@ -165,6 +202,100 @@
             <h3>Activity Log</h3>
             <div id="log" class="log"></div>
         </div>
+
+        <!-- Hub Dashboard View -->
+        <div id="hub-view" class="hub-view" style="display: none;">
+            <div class="hub-header">
+                <h2>Hub Dashboard</h2>
+                <div class="hub-info">
+                    <span class="hub-code">Code: <strong id="hub-pairing-code">------</strong></span>
+                    <button id="show-qr-btn" class="btn btn-secondary">Show QR Code</button>
+                </div>
+            </div>
+
+            <div class="hub-stats-grid">
+                <div class="hub-stat-card">
+                    <div class="stat-value" id="hub-total-in">0</div>
+                    <div class="stat-label">Total In</div>
+                </div>
+                <div class="hub-stat-card">
+                    <div class="stat-value" id="hub-total-out">0</div>
+                    <div class="stat-label">Total Out</div>
+                </div>
+                <div class="hub-stat-card">
+                    <div class="stat-value" id="hub-cameras-connected">0</div>
+                    <div class="stat-label">Cameras Online</div>
+                </div>
+            </div>
+
+            <div class="camera-list">
+                <h3>Connected Cameras</h3>
+                <div id="hub-camera-list" class="camera-grid">
+                    <div class="empty-state">No cameras connected yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Camera Station View -->
+        <div id="camera-view" class="camera-view" style="display: none;">
+            <!-- Pairing Screen -->
+            <div id="camera-pairing" class="camera-pairing">
+                <h2>Connect to Hub</h2>
+                <p>Enter the hub pairing code to connect this camera</p>
+
+                <input type="text" id="pairing-code-input" placeholder="Enter 6-digit code" maxlength="6" class="input input-large" />
+                <button id="pair-camera-btn" class="btn btn-primary btn-large">Connect</button>
+
+                <div class="camera-name-input">
+                    <input type="text" id="camera-name-input" placeholder="Camera name (e.g., Main Entrance)" class="input" />
+                    <input type="text" id="camera-location-input" placeholder="Location (optional)" class="input" />
+                </div>
+            </div>
+
+            <!-- Connected Screen -->
+            <div id="camera-connected" class="camera-connected" style="display: none;">
+                <div class="connection-status connected">
+                    <span class="status-dot"></span>
+                    <span>Connected to Hub</span>
+                </div>
+
+                <div class="camera-info-display">
+                    <h3 id="camera-display-name">Camera Station</h3>
+                    <p id="camera-display-location"></p>
+                </div>
+
+                <div class="camera-stats">
+                    <div class="stat-box">
+                        <div class="stat-value" id="camera-total-in">0</div>
+                        <div class="stat-label">In</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="camera-total-out">0</div>
+                        <div class="stat-label">Out</div>
+                    </div>
+                </div>
+
+                <div class="camera-note">
+                    <p>📹 This camera is sending count data only. No video is transmitted.</p>
+                </div>
+
+                <button id="disconnect-camera-btn" class="btn btn-secondary btn-full">Disconnect</button>
+            </div>
+        </div>
+
+        <!-- QR Code Modal -->
+        <div id="qr-modal" class="modal">
+            <div class="modal-content qr-content">
+                <h2>Scan to Connect Camera</h2>
+                <div id="qr-code-display"></div>
+                <div class="qr-info">
+                    <p>Pairing Code: <strong id="qr-pairing-code">------</strong></p>
+                    <p class="qr-instructions">Scan this QR code with your camera device or enter the code manually</p>
+                </div>
+                <button id="close-qr-btn" class="btn btn-primary">Close</button>
+            </div>
+        </div>
+
     </div>
 
     <script type="module" src="/src/main.js"></script>

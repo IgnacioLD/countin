@@ -1211,3 +1211,554 @@ body.drawing-active #line-canvas {
 .checkbox-label:hover {
     color: var(--text-color);
 }
+
+/* Mode Selection */
+.mode-description {
+    text-align: center;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.mode-selection {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.mode-card {
+    background: var(--surface-color);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 2rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.mode-card:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.mode-card:active {
+    transform: translateY(0);
+}
+
+.mode-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.mode-card h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.mode-card p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.mode-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: rgba(0, 102, 204, 0.1);
+    color: var(--primary-color);
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.current-mode-display {
+    background: var(--surface-color);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    text-align: center;
+    margin-bottom: 1rem;
+    border: 2px solid var(--primary-color);
+}
+
+.current-mode-display span {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+/* Hub Dashboard View */
+.hub-view {
+    padding: 2rem 2.5rem;
+    background: white;
+}
+
+.hub-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.hub-header h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.hub-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.hub-code {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.hub-code strong {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    letter-spacing: 0.1em;
+}
+
+.hub-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.hub-stat-card {
+    background: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.hub-stat-card .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.hub-stat-card .stat-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.camera-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.camera-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    transition: var(--transition);
+}
+
+.camera-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-color);
+}
+
+.camera-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.camera-card-header h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.camera-status {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.camera-status.online {
+    color: var(--success-color);
+}
+
+.camera-status.offline {
+    color: var(--text-tertiary);
+}
+
+.camera-status .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: currentColor;
+}
+
+.camera-card-location {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+}
+
+.camera-card-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.camera-stat {
+    text-align: center;
+    padding: 0.75rem;
+    background: var(--surface-color);
+    border-radius: var(--radius-md);
+}
+
+.camera-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.camera-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+}
+
+/* Camera Station View */
+.camera-view {
+    padding: 2rem 2.5rem;
+    background: white;
+    min-height: 60vh;
+}
+
+.camera-pairing {
+    max-width: 500px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 3rem 0;
+}
+
+.camera-pairing h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 1rem;
+}
+
+.camera-pairing p {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+}
+
+.input-large {
+    font-size: 1.5rem;
+    text-align: center;
+    letter-spacing: 0.2em;
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    text-transform: uppercase;
+    padding: 1rem;
+}
+
+.camera-name-input {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.camera-connected {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 3rem 0;
+}
+
+.connection-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--surface-color);
+    border-radius: var(--radius-lg);
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.connection-status.connected {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+}
+
+.connection-status .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-full);
+    background: currentColor;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.camera-info-display {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.camera-info-display h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.camera-info-display p {
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.camera-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.camera-note {
+    background: rgba(0, 102, 204, 0.05);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--primary-color);
+    margin-bottom: 1.5rem;
+}
+
+.camera-note p {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* QR Code Modal */
+.qr-content {
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+}
+
+.qr-content h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+}
+
+#qr-code-display {
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem;
+    background: white;
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.5rem;
+}
+
+.qr-info {
+    background: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+}
+
+.qr-info p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.qr-info p:first-child {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.qr-info strong {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    letter-spacing: 0.15em;
+}
+
+.qr-instructions {
+    margin-top: 0.5rem !important;
+}
+
+.camera-info {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+.setup-guide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 500;
+    backdrop-filter: blur(4px);
+}
+
+.setup-guide.active {
+    display: flex;
+}
+
+.setup-guide-content {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    max-width: 400px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+}
+
+.setup-guide-content h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 0.75rem;
+}
+
+.setup-guide-content p {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.setup-tools {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.setup-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .mode-selection {
+        grid-template-columns: 1fr;
+    }
+
+    .mode-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .hub-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+
+    .hub-info {
+        flex-direction: column;
+    }
+
+    .hub-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .camera-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .camera-view,
+    .hub-view {
+        padding: 1.5rem 1rem;
+    }
+
+    .camera-pairing,
+    .camera-connected {
+        padding: 2rem 0;
+    }
+
+    .input-large {
+        font-size: 1.25rem;
+    }
+
+    .qr-content {
+        padding: 1.5rem;
+    }
+
+    .mode-icon {
+        font-size: 2.5rem;
+    }
+}
+
+/* Touch-friendly styles for mobile camera nodes */
+@media (hover: none) and (pointer: coarse) {
+    .btn {
+        min-height: 44px;
+        padding: 0.75rem 1.5rem;
+    }
+
+    .mode-card {
+        min-height: 180px;
+        padding: 2rem 1.5rem;
+    }
+
+    .input {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .input-large {
+        min-height: 56px;
+        font-size: 1.25rem;
+    }
+}

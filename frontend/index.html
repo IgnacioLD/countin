@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CountIn - Real-Time Occupancy Tracker</title>
+    <link rel="stylesheet" href="/src/styles.css">
+    <!-- TensorFlow.js and COCO-SSD for AI detection -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+    <script src="/src/rfdetr-adapter.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CountIn - People Counter</h1>
+            <div class="header-controls">
+                <div class="mode-indicator">
+                    <span class="mode-label">Mode:</span>
+                    <span id="current-mode" class="mode-value">Setup</span>
+                </div>
+                <button id="settings-btn" class="btn btn-secondary">⚙️ Settings</button>
+            </div>
+        </header>
+
+        <!-- AI Model Loading Modal -->
+        <div id="model-loading-modal" class="modal">
+            <div class="modal-content loading-content">
+                <div class="loading-spinner"></div>
+                <h3>Loading AI Model</h3>
+                <p id="loading-status">Downloading detection model...</p>
+                <div class="loading-bar">
+                    <div class="loading-bar-fill" id="loading-progress"></div>
+                </div>
+                <p class="loading-info">This may take a minute on first load</p>
+            </div>
+        </div>
+
+        <!-- Onboarding Flow -->
+        <div id="onboarding-modal" class="modal active">
+            <div class="modal-content onboarding-content">
+                <!-- Step 1: Welcome -->
+                <div class="onboarding-step active" data-step="1">
+                    <div class="welcome-header">
+                        <h1>CountIn</h1>
+                        <p class="tagline">AI-powered people counting</p>
+                    </div>
+                    <button class="btn btn-primary btn-large" onclick="window.countInApp.nextOnboardingStep()">Start Setup</button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Camera Selector Modal -->
+        <div id="camera-modal" class="modal">
+            <div class="modal-content">
+                <h3>Select Camera</h3>
+                <div id="camera-list" class="camera-list"></div>
+                <button id="camera-confirm-btn" class="btn btn-primary">Start Camera</button>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content settings-content">
+                <h2>Settings</h2>
+
+                <div class="settings-section">
+                    <h3>Camera</h3>
+                    <button id="change-camera-btn-modal" class="btn btn-full">Change Camera</button>
+                    <div id="camera-info-modal" class="camera-info"></div>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="mirror-video-checkbox">
+                        <span>Mirror Video</span>
+                    </label>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Mode</h3>
+                    <div class="mode-toggle">
+                        <button id="setup-mode-btn" class="btn btn-mode active">Setup</button>
+                        <button id="counting-mode-btn" class="btn btn-mode">Counting</button>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Drawing Tools</h3>
+                    <div class="drawing-mode-toggle">
+                        <button id="line-mode-btn" class="btn btn-mode-select active">Line</button>
+                        <button id="area-mode-btn" class="btn btn-mode-select">Area</button>
+                    </div>
+                    <button id="clear-lines-btn" class="btn btn-full">Clear All Lines</button>
+                </div>
+
+                <button id="close-settings-btn" class="btn btn-primary btn-large">Close</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="video-container">
+                <video id="video" autoplay muted playsinline></video>
+                <canvas id="detection-canvas"></canvas>
+                <canvas id="line-canvas"></canvas>
+
+                <!-- Setup Guide Overlay -->
+                <div class="setup-guide" id="setup-guide">
+                    <div class="setup-guide-content">
+                        <h3>Draw Counting Zones</h3>
+                        <p>Click and drag on the video to create lines or areas</p>
+
+                        <div class="setup-tools">
+                            <button id="line-mode-onboard" class="btn btn-mode-select active">Line</button>
+                            <button id="area-mode-onboard" class="btn btn-mode-select">Area</button>
+                        </div>
+
+                        <div class="setup-actions">
+                            <button class="btn btn-secondary btn-small" onclick="window.countInApp.skipOnboarding()">Skip</button>
+                            <button class="btn btn-primary btn-small" onclick="window.countInApp.completeOnboarding()">Start Counting</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-panel">
+                <div class="counting-stats">
+                    <h3>Live Statistics</h3>
+                    <div class="stats-grid">
+                        <div class="stat-box" id="total-count">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Total</div>
+                        </div>
+                        <div class="stat-box" id="in-count">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">In</div>
+                        </div>
+                        <div class="stat-box" id="out-count">
+                            <div class="stat-value">0</div>
+                            <div class="stat-label">Out</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="line-list-container">
+                    <h3>Counting Lines</h3>
+                    <div id="line-list" class="line-list">
+                        <div class="empty-state">No lines added yet</div>
+                    </div>
+                </div>
+
+                <div class="session-controls">
+                    <h3>Session</h3>
+                    <input type="text" id="session-name" placeholder="Session name" class="input" />
+                    <button id="save-session-btn" class="btn btn-full">Save Session</button>
+                    <button id="export-data-btn" class="btn btn-full">Export Data</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="visualization-panel">
+            <h3>Counts Over Time</h3>
+            <div id="chart-container"></div>
+        </div>
+
+        <div class="log-container">
+            <h3>Activity Log</h3>
+            <div id="log" class="log"></div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

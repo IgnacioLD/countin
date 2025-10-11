@@ -26,6 +26,16 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          tensorflow: ['@tensorflow/tfjs', '@tensorflow-models/coco-ssd'],
+          qrcode: ['qrcode'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000,
   },
 });

@@ -83,6 +83,7 @@ class CountInApp {
         this.cameraStation = null;
         this.cameraWebSocket = null;
         this.hubId = null;
+        this.cameraListenersSet = false;
 
         // Performance optimization
         this.frameCount = 0;
@@ -104,10 +105,29 @@ class CountInApp {
         // Set up event listeners
         this.setupEventListeners();
 
-        // Don't show camera selector yet - let onboarding handle it
+        // Check for saved app mode
+        const savedMode = localStorage.getItem('countin-app-mode');
+        const savedCameraStationId = localStorage.getItem('countin-camera-station-id');
+        const savedHubSessionId = localStorage.getItem('countin-hub-session-id');
 
-        // Default to setup mode
-        this.setMode('setup');
+        if (savedMode) {
+            this.log(`Restoring previous mode: ${savedMode}`, 'info');
+            const onboardingModal = document.getElementById('onboarding-modal');
+            onboardingModal.classList.remove('active');
+            this.isOnboarding = false;
+
+            // Restore the mode
+            if (savedMode === 'hub' && savedHubSessionId) {
+                await this.restoreHubSession(savedHubSessionId);
+            } else if (savedMode === 'camera' && savedCameraStationId) {
+                await this.restoreCameraStation(savedCameraStationId);
+            } else if (savedMode === 'standalone') {
+                this.selectMode('standalone');
+            }
+        } else {
+            // Show onboarding for new users
+            this.setMode('setup');
+        }
 
         this.log('Initialization complete.', 'success');
     }
@@ -128,6 +148,7 @@ class CountInApp {
 
     selectMode(mode) {
         this.appMode = mode;
+        localStorage.setItem('countin-app-mode', mode);
         this.log(`App mode selected: ${mode}`, 'info');
 
         const onboardingModal = document.getElementById('onboarding-modal');
@@ -184,7 +205,7 @@ class CountInApp {
         } else if (mode === 'camera') {
             // Camera station mode
             onboardingModal.classList.remove('active');
-            mainContent.style.display = 'grid';
+            mainContent.style.display = 'none';
             visualizationPanel.style.display = 'none';
             logContainer.style.display = 'block';
             hubView.style.display = 'none';
@@ -385,7 +406,14 @@ class CountInApp {
         });
 
         // Camera controls
-        this.changeCameraBtn.addEventListener('click', () => this.cameraSelector.show());
+        this.changeCameraBtn.addEventListener('click', () => {
+            // Ensure video elements are visible before showing camera selector
+            if (this.appMode === 'camera') {
+                const mainContent = document.querySelector('.main-content');
+                mainContent.style.display = 'grid';
+            }
+            this.cameraSelector.show();
+        });
 
         // Mirror video toggle
         const mirrorCheckbox = document.getElementById('mirror-video-checkbox');
@@ -400,6 +428,12 @@ class CountInApp {
         // Session controls
         this.saveSessionBtn.addEventListener('click', () => this.saveSession());
         this.exportDataBtn.addEventListener('click', () => this.exportData());
+
+        // Logo click to go to home
+        const logoLink = document.getElementById('logo-link');
+        logoLink.addEventListener('click', () => {
+            window.location.href = window.location.origin;
+        });
 
         // Window resize handler for responsive canvas
         window.addEventListener('resize', () => {
@@ -795,20 +829,28 @@ class CountInApp {
 
         try {
             // Create a new hub session
-            const response = await fetch(`${apiService.baseURL}/api/v1/hubs`, {
+            const response = await fetch(`${apiService.baseUrl}/hubs`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: `Hub ${new Date().toLocaleString()}` })
             });
 
-            if (!response.ok) throw new Error('Failed to create hub session');
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Hub creation failed:', errorText);
+                throw new Error('Failed to create hub session');
+            }
 
             this.hubSession = await response.json();
 
-            // Display pairing code
-            document.getElementById('hub-pairing-code').textContent = this.hubSession.pairing_code;
+            // Store the actual code but don't display it yet
+            this.hubPairingCodeActual = this.hubSession.pairing_code;
+            this.hubPairingCodeVisible = false;
 
-            this.log(`Hub created with pairing code: ${this.hubSession.pairing_code}`, 'success');
+            // Save to localStorage
+            localStorage.setItem('countin-hub-session-id', this.hubSession.id);
+
+            this.log(`Hub created successfully`, 'success');
 
             // Connect to WebSocket for real-time updates
             this.connectHubWebSocket();
@@ -827,6 +869,7 @@ class CountInApp {
         const showQRBtn = document.getElementById('show-qr-btn');
         const qrModal = document.getElementById('qr-modal');
         const closeQRBtn = document.getElementById('close-qr-btn');
+        const toggleCodeBtn = document.getElementById('toggle-code-btn');
 
         showQRBtn.addEventListener('click', () => this.showQRCode());
 
@@ -839,6 +882,29 @@ class CountInApp {
                 qrModal.classList.remove('active');
             }
         });
+
+        toggleCodeBtn.addEventListener('click', () => this.togglePairingCode());
+    }
+
+    togglePairingCode() {
+        const codeElement = document.getElementById('hub-pairing-code');
+        const toggleBtn = document.getElementById('toggle-code-btn');
+
+        this.hubPairingCodeVisible = !this.hubPairingCodeVisible;
+
+        if (this.hubPairingCodeVisible) {
+            codeElement.textContent = this.hubPairingCodeActual;
+            codeElement.classList.remove('code-hidden');
+            toggleBtn.textContent = '🙈';
+            toggleBtn.title = 'Hide Code';
+            this.log('Pairing code revealed', 'info');
+        } else {
+            codeElement.textContent = '••••••';
+            codeElement.classList.add('code-hidden');
+            toggleBtn.textContent = '👁️';
+            toggleBtn.title = 'Show Code';
+            this.log('Pairing code hidden', 'info');
+        }
     }
 
     async showQRCode() {
@@ -878,7 +944,7 @@ class CountInApp {
         if (!this.hubSession) return;
 
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsHost = apiService.baseURL.replace('http://', '').replace('https://', '');
+        const wsHost = (apiService.baseURL || window.location.origin).replace('http://', '').replace('https://', '');
         const wsURL = `${wsProtocol}//${wsHost}/api/v1/ws/hub/${this.hubSession.id}`;
 
         this.hubWebSocket = new WebSocket(wsURL);
@@ -924,7 +990,7 @@ class CountInApp {
         if (this.appMode !== 'hub' || !this.hubSession) return;
 
         try {
-            const response = await fetch(`${apiService.baseURL}/api/v1/hubs/${this.hubSession.id}/stats`);
+            const response = await fetch(`${apiService.baseUrl}/hubs/${this.hubSession.id}/stats`);
             const stats = await response.json();
 
             document.getElementById('hub-total-in').textContent = stats.total_in;
@@ -932,7 +998,7 @@ class CountInApp {
             document.getElementById('hub-cameras-connected').textContent = stats.connected_cameras;
 
             // Get camera list
-            const camerasResponse = await fetch(`${apiService.baseURL}/api/v1/cameras/hub/${this.hubSession.id}`);
+            const camerasResponse = await fetch(`${apiService.baseUrl}/cameras/hub/${this.hubSession.id}`);
             const cameras = await camerasResponse.json();
 
             this.updateCameraList(cameras);
@@ -1036,22 +1102,27 @@ class CountInApp {
             return;
         }
 
-        pairBtn.addEventListener('click', async () => {
-            const pairingCode = pairingInput.value.trim().toUpperCase();
-            const cameraName = cameraNameInput.value.trim() || 'Camera';
-            const cameraLocation = cameraLocationInput.value.trim();
+        // Only set up event listeners once
+        if (!this.cameraListenersSet) {
+            pairBtn.addEventListener('click', async () => {
+                const pairingCode = pairingInput.value.trim().toUpperCase();
+                const cameraName = cameraNameInput.value.trim() || 'Camera';
+                const cameraLocation = cameraLocationInput.value.trim();
 
-            if (pairingCode.length !== 6) {
-                this.log('Pairing code must be 6 characters', 'error');
-                return;
-            }
+                if (pairingCode.length !== 6) {
+                    this.log('Pairing code must be 6 characters', 'error');
+                    return;
+                }
 
-            await this.pairCamera(pairingCode, cameraName, cameraLocation);
-        });
+                await this.pairCamera(pairingCode, cameraName, cameraLocation);
+            });
 
-        // Set up disconnect button
-        const disconnectBtn = document.getElementById('disconnect-camera-btn');
-        disconnectBtn.addEventListener('click', () => this.disconnectCamera());
+            // Set up disconnect button
+            const disconnectBtn = document.getElementById('disconnect-camera-btn');
+            disconnectBtn.addEventListener('click', () => this.disconnectCamera());
+
+            this.cameraListenersSet = true;
+        }
     }
 
     async pairCamera(pairingCode, cameraName, cameraLocation) {
@@ -1073,6 +1144,9 @@ class CountInApp {
 
             this.cameraStation = await response.json();
             this.hubId = this.cameraStation.hub_session_id;
+
+            // Save to localStorage
+            localStorage.setItem('countin-camera-station-id', this.cameraStation.id);
 
             this.log('Camera paired successfully!', 'success');
             this.onCameraPaired();
@@ -1108,6 +1182,7 @@ class CountInApp {
     async onCameraPaired() {
         const cameraPairing = document.getElementById('camera-pairing');
         const cameraConnected = document.getElementById('camera-connected');
+        const mainContent = document.querySelector('.main-content');
 
         cameraPairing.style.display = 'none';
         cameraConnected.style.display = 'block';
@@ -1118,6 +1193,9 @@ class CountInApp {
 
         // Connect WebSocket
         this.connectCameraWebSocket();
+
+        // Show main content (video area) for camera selection
+        mainContent.style.display = 'grid';
 
         // Start camera and counting
         this.cameraSelector.show();
@@ -1215,11 +1293,89 @@ class CountInApp {
             this.cameraStation = null;
             this.hubId = null;
 
+            // Clear localStorage
+            localStorage.removeItem('countin-camera-station-id');
+            localStorage.removeItem('countin-app-mode');
+
             // Show pairing screen again
             document.getElementById('camera-pairing').style.display = 'block';
             document.getElementById('camera-connected').style.display = 'none';
         } catch (error) {
             this.log('Failed to disconnect camera: ' + error.message, 'error');
+        }
+    }
+
+    async restoreHubSession(hubSessionId) {
+        try {
+            const response = await fetch(`${apiService.baseURL}/api/v1/hubs/${hubSessionId}`);
+            if (!response.ok) throw new Error('Hub session not found');
+
+            this.hubSession = await response.json();
+            this.hubPairingCodeActual = this.hubSession.pairing_code;
+            this.hubPairingCodeVisible = false;
+
+            // Show hub view
+            const mainContent = document.querySelector('.main-content');
+            const visualizationPanel = document.querySelector('.visualization-panel');
+            const logContainer = document.querySelector('.log-container');
+            const hubView = document.getElementById('hub-view');
+            const cameraView = document.getElementById('camera-view');
+
+            mainContent.style.display = 'none';
+            visualizationPanel.style.display = 'none';
+            logContainer.style.display = 'none';
+            hubView.style.display = 'block';
+            cameraView.style.display = 'none';
+
+            // Connect WebSocket
+            this.connectHubWebSocket();
+
+            // Set up event listeners
+            this.setupHubEventListeners();
+
+            // Start polling
+            this.pollHubStats();
+
+            this.log('Hub session restored', 'success');
+        } catch (error) {
+            this.log('Failed to restore hub session: ' + error.message, 'error');
+            localStorage.removeItem('countin-hub-session-id');
+            localStorage.removeItem('countin-app-mode');
+        }
+    }
+
+    async restoreCameraStation(cameraStationId) {
+        try {
+            const response = await fetch(`${apiService.baseURL}/api/v1/cameras/${cameraStationId}`);
+            if (!response.ok) throw new Error('Camera station not found');
+
+            this.cameraStation = await response.json();
+            this.hubId = this.cameraStation.hub_session_id;
+
+            // Show camera view
+            const mainContent = document.querySelector('.main-content');
+            const visualizationPanel = document.querySelector('.visualization-panel');
+            const logContainer = document.querySelector('.log-container');
+            const hubView = document.getElementById('hub-view');
+            const cameraView = document.getElementById('camera-view');
+
+            mainContent.style.display = 'none';
+            visualizationPanel.style.display = 'none';
+            logContainer.style.display = 'block';
+            hubView.style.display = 'none';
+            cameraView.style.display = 'block';
+
+            // Initialize camera station
+            this.initializeCameraStation();
+
+            // Directly show connected state
+            await this.onCameraPaired();
+
+            this.log('Camera station restored', 'success');
+        } catch (error) {
+            this.log('Failed to restore camera station: ' + error.message, 'error');
+            localStorage.removeItem('countin-camera-station-id');
+            localStorage.removeItem('countin-app-mode');
         }
     }
 

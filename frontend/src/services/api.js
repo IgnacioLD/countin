@@ -9,6 +9,7 @@ const API_BASE = `${API_URL}/api/v1`;
 export class ApiService {
     constructor() {
         this.baseUrl = API_BASE;
+        this.baseURL = API_URL || window.location.origin; // Full base URL for direct fetch calls
         this.currentSession = null;
     }
 

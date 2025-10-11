@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CountIn - Real-Time Occupancy Tracker</title>
     <link rel="stylesheet" href="/src/styles.css">
-    <!-- TensorFlow.js and COCO-SSD for AI detection -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
-    <script src="/src/rfdetr-adapter.js"></script>
+    <!-- TensorFlow.js and COCO-SSD loaded dynamically when needed -->
+    <script src="/src/rfdetr-adapter.js" defer></script>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>CountIn - People Counter</h1>
+            <div class="header-left">
+                <h1 id="logo-link" style="cursor: pointer;">CountIn</h1>
+                <span class="tagline-header">Privacy-focused people counting</span>
+            </div>
             <div class="header-controls">
                 <div class="mode-indicator">
                     <span class="mode-label">Mode:</span>
@@ -208,7 +209,10 @@
             <div class="hub-header">
                 <h2>Hub Dashboard</h2>
                 <div class="hub-info">
-                    <span class="hub-code">Code: <strong id="hub-pairing-code">------</strong></span>
+                    <div class="hub-code-container">
+                        <span class="hub-code">Code: <strong id="hub-pairing-code" class="code-hidden">••••••</strong></span>
+                        <button id="toggle-code-btn" class="btn btn-icon" title="Show/Hide Code">👁️</button>
+                    </div>
                     <button id="show-qr-btn" class="btn btn-secondary">Show QR Code</button>
                 </div>
             </div>

@@ -9,6 +9,47 @@ window.rfdetrAdapter = (() => {
     let model = null;
     let isLoaded = false;
     let isLoading = false;
+    let tfLoaded = false;
+
+    /**
+     * Load TensorFlow.js and COCO-SSD from CDN dynamically
+     */
+    async function loadTensorFlow() {
+        if (tfLoaded) return;
+        if (window.tf && window.cocoSsd) {
+            tfLoaded = true;
+            return;
+        }
+
+        console.log('Loading TensorFlow.js libraries...');
+
+        // Load TensorFlow.js
+        if (!window.tf) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js';
+                script.async = true;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        // Load COCO-SSD
+        if (!window.cocoSsd) {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
+                script.async = true;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        }
+
+        tfLoaded = true;
+        console.log('TensorFlow.js libraries loaded');
+    }
 
     /**
      * Load the COCO-SSD model for person detection
@@ -37,6 +78,10 @@ window.rfdetrAdapter = (() => {
 
         try {
             isLoading = true;
+
+            // Load TensorFlow.js first if not loaded
+            await loadTensorFlow();
+
             console.log('Loading COCO-SSD model...');
 
             // Try to load the model from CDN

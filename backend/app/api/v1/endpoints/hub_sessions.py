@@ -13,7 +13,13 @@ router = APIRouter()
 @router.post("/", response_model=HubSessionWithToken, status_code=status.HTTP_201_CREATED)
 def create_hub_session(hub_data: HubSessionCreate, db: Session = Depends(get_db)):
     """Create a new hub dashboard session"""
-    hub = HubSession(**hub_data.dict())
+    from app.models.hub_session import generate_pairing_code, generate_pairing_token
+
+    hub = HubSession(
+        **hub_data.dict(),
+        pairing_code=generate_pairing_code(),
+        pairing_token=generate_pairing_token()
+    )
     db.add(hub)
     db.commit()
     db.refresh(hub)

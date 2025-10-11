@@ -26,5 +26,5 @@ ENV PORT=3000
 # Expose port
 EXPOSE ${PORT}
 
-# Serve built files with serve
-CMD ["sh", "-c", "serve -s dist -l ${PORT}"]
+# Serve built files
+CMD ["sh", "-c", "serve -s dist -l ${PORT} --no-clipboard"]

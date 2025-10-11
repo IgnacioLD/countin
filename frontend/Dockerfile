@@ -8,8 +8,8 @@ ARG VITE_API_URL=http://localhost:8000
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies in one step
-RUN npm ci --only=production && npm install -g serve
+# Install all dependencies (needed for build) then install serve globally
+RUN npm ci && npm install -g serve
 
 # Copy source files
 COPY . .

@@ -14,6 +14,9 @@ RUN npm ci
 # Copy source files
 COPY . .
 
+# Debug: List files to verify index.html exists
+RUN ls -la /app/
+
 # Set environment variables for build
 ENV VITE_API_URL=$VITE_API_URL
 

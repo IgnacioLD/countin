@@ -293,6 +293,14 @@ class CountInApp {
                 this.setDrawingMode('line');
                 lineModeOnboard.classList.add('active');
                 areaModeOnboard.classList.remove('active');
+
+                // Close setup guide and enable drawing immediately
+                const setupGuide = document.getElementById('setup-guide');
+                if (setupGuide) {
+                    setupGuide.classList.remove('active');
+                }
+                this.lineManager.enableDrawing();
+                this.log('Line mode ready - click and drag to draw lines', 'info');
             };
 
             areaModeOnboard.onclick = (e) => {
@@ -302,6 +310,14 @@ class CountInApp {
                 this.setDrawingMode('area');
                 areaModeOnboard.classList.add('active');
                 lineModeOnboard.classList.remove('active');
+
+                // Close setup guide and enable drawing immediately
+                const setupGuide = document.getElementById('setup-guide');
+                if (setupGuide) {
+                    setupGuide.classList.remove('active');
+                }
+                this.lineManager.enableDrawing();
+                this.log('Area mode ready - click and drag to draw areas', 'info');
             };
 
             console.log('Onboarding button handlers attached');
@@ -1599,14 +1615,21 @@ class CountInApp {
         // Show main content (video area) for camera selection
         mainContent.style.display = 'grid';
 
-        // Start camera and counting
+        // Start camera and show setup guide
         this.cameraSelector.show();
 
-        // Override onCameraSelected to start counting automatically
+        // Override onCameraSelected to show setup guide for drawing
         const originalOnCameraSelected = this.onCameraSelected.bind(this);
         this.onCameraSelected = (stream, deviceId) => {
             originalOnCameraSelected(stream, deviceId);
-            this.setMode('counting');
+
+            // Show setup guide overlay
+            const setupGuide = document.getElementById('setup-guide');
+            setupGuide.classList.add('active');
+            this.onboardingStep = 3;
+
+            // Set up onboarding button listeners
+            this.setupOnboardingButtons();
         };
 
         // Override line crossing callback to send to hub

@@ -38,6 +38,8 @@ services:
       BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-https://countin.ignacio.tech,https://*.countin.ignacio.tech}
     expose:
       - "8000"
+    depends_on:
+      - db
     networks:
       - countin-network
     restart: unless-stopped

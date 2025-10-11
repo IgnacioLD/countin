@@ -60,6 +60,12 @@ def health_check():
     return {"status": "healthy"}
 
 
+@app.get(f"{settings.API_V1_STR}/health")
+def health_check_v1():
+    """Health check endpoint for API v1"""
+    return {"status": "healthy", "version": settings.VERSION}
+
+
 @app.on_event("startup")
 async def startup_event():
     """Log configuration on startup"""

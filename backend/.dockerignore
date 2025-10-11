@@ -18,3 +18,7 @@ README.md
 .idea
 node_modules
 frontend
+
+# Don't ignore startup scripts
+!wait-for-db.py
+!start.sh

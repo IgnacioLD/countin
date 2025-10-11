@@ -34,6 +34,10 @@ COPY --from=builder /root/.local /root/.local
 # Copy application
 COPY ./app /app/app
 
+# Copy startup scripts
+COPY wait-for-db.py start.sh ./
+RUN chmod +x start.sh wait-for-db.py
+
 # Update PATH and Python optimizations
 ENV PATH=/root/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
@@ -42,5 +46,9 @@ ENV PATH=/root/.local/bin:$PATH \
 # Expose port
 EXPOSE 8000
 
-# Run with uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-keep-alive", "120", "--workers", "1"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')" || exit 1
+
+# Run with startup script
+CMD ["./start.sh"]

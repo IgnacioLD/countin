@@ -865,7 +865,12 @@ class CountInApp {
 
         try {
             // Create a new hub session
-            const response = await fetch(`${apiService.baseUrl}/hubs`, {
+            const hubUrl = `${apiService.baseUrl}/hubs`;
+            console.log('Creating hub at URL:', hubUrl);
+            console.log('apiService.baseUrl:', apiService.baseUrl);
+            console.log('apiService.baseURL:', apiService.baseURL);
+
+            const response = await fetch(hubUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: `Hub ${new Date().toLocaleString()}` })

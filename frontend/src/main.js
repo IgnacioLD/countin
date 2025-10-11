@@ -99,6 +99,12 @@ class CountInApp {
     async init() {
         this.log('Initializing CountIn...');
 
+        // Ensure setup-guide is hidden initially
+        const setupGuide = document.getElementById('setup-guide');
+        if (setupGuide) {
+            setupGuide.classList.remove('active');
+        }
+
         // Set up callbacks
         this.setupCallbacks();
 

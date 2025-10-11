@@ -9,6 +9,7 @@ import { PersonTracker } from './tracker.js';
 import { LineManager } from './line-manager.js';
 import { CountingVisualization } from './visualization.js';
 import QRCode from 'qrcode';
+import Chart from 'chart.js/auto';
 import './rfdetr-adapter.js';
 
 class CountInApp {
@@ -79,6 +80,12 @@ class CountInApp {
         this.hubSession = null;
         this.hubWebSocket = null;
         this.connectedCameras = new Map();
+        this.hubOverviewChart = null;
+        this.cameraDetailChart = null;
+        this.chartData = {
+            labels: [],
+            datasets: []
+        };
 
         // Camera mode state
         this.cameraStation = null;
@@ -980,6 +987,89 @@ class CountInApp {
         });
 
         toggleCodeBtn.addEventListener('click', () => this.togglePairingCode());
+
+        // Camera detail modal
+        const cameraDetailModal = document.getElementById('camera-detail-modal');
+        const closeCameraDetailBtn = document.getElementById('close-camera-detail');
+
+        closeCameraDetailBtn.addEventListener('click', () => {
+            cameraDetailModal.classList.remove('active');
+        });
+
+        cameraDetailModal.addEventListener('click', (e) => {
+            if (e.target === cameraDetailModal) {
+                cameraDetailModal.classList.remove('active');
+            }
+        });
+
+        // Initialize hub overview chart
+        this.initializeHubChart();
+    }
+
+    initializeHubChart() {
+        const canvas = document.getElementById('hub-overview-chart');
+        if (!canvas) return;
+
+        this.hubOverviewChart = new Chart(canvas, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Total In',
+                    data: [],
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    tension: 0.4
+                }, {
+                    label: 'Total Out',
+                    data: [],
+                    borderColor: '#2196F3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    updateHubChart(totalIn, totalOut) {
+        if (!this.hubOverviewChart) return;
+
+        const now = new Date().toLocaleTimeString();
+
+        // Add new data point
+        this.hubOverviewChart.data.labels.push(now);
+        this.hubOverviewChart.data.datasets[0].data.push(totalIn);
+        this.hubOverviewChart.data.datasets[1].data.push(totalOut);
+
+        // Keep only last 20 data points
+        if (this.hubOverviewChart.data.labels.length > 20) {
+            this.hubOverviewChart.data.labels.shift();
+            this.hubOverviewChart.data.datasets[0].data.shift();
+            this.hubOverviewChart.data.datasets[1].data.shift();
+        }
+
+        this.hubOverviewChart.update('none');
     }
 
     togglePairingCode() {
@@ -1130,6 +1220,9 @@ class CountInApp {
             document.getElementById('hub-total-out').textContent = stats.total_out;
             document.getElementById('hub-cameras-connected').textContent = stats.connected_cameras;
 
+            // Update hub overview chart
+            this.updateHubChart(stats.total_in, stats.total_out);
+
             // Get camera list
             const camerasResponse = await fetch(`${apiService.baseUrl}/cameras/hub/${this.hubSession.id}`);
             const cameras = await camerasResponse.json();
@@ -1208,6 +1301,16 @@ class CountInApp {
             `;
             cameraCard.appendChild(stats);
 
+            // Add view details button
+            const viewBtn = document.createElement('button');
+            viewBtn.className = 'btn btn-primary btn-small btn-full';
+            viewBtn.textContent = 'View Details';
+            viewBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.showCameraDetail(camera);
+            };
+            cameraCard.appendChild(viewBtn);
+
             // Add action buttons
             const actions = document.createElement('div');
             actions.className = 'camera-card-actions';
@@ -1215,18 +1318,84 @@ class CountInApp {
             const editBtn = document.createElement('button');
             editBtn.className = 'btn btn-secondary btn-small';
             editBtn.textContent = 'Edit Name';
-            editBtn.onclick = () => this.editCameraName(camera);
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.editCameraName(camera);
+            };
             actions.appendChild(editBtn);
 
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'btn btn-danger btn-small';
             deleteBtn.textContent = 'Delete';
-            deleteBtn.onclick = () => this.deleteCamera(camera);
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.deleteCamera(camera);
+            };
             actions.appendChild(deleteBtn);
 
             cameraCard.appendChild(actions);
             cameraList.appendChild(cameraCard);
         }
+    }
+
+    showCameraDetail(camera) {
+        const modal = document.getElementById('camera-detail-modal');
+        const nameEl = document.getElementById('camera-detail-name');
+        const inEl = document.getElementById('camera-detail-in');
+        const outEl = document.getElementById('camera-detail-out');
+        const totalEl = document.getElementById('camera-detail-total');
+
+        nameEl.textContent = camera.name;
+        inEl.textContent = camera.total_in;
+        outEl.textContent = camera.total_out;
+        totalEl.textContent = camera.total_in + camera.total_out;
+
+        // Initialize camera detail chart if not already created
+        if (!this.cameraDetailChart) {
+            const canvas = document.getElementById('camera-detail-chart');
+            this.cameraDetailChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: ['In', 'Out'],
+                    datasets: [{
+                        label: 'Counts',
+                        data: [camera.total_in, camera.total_out],
+                        backgroundColor: [
+                            'rgba(76, 175, 80, 0.6)',
+                            'rgba(33, 150, 243, 0.6)'
+                        ],
+                        borderColor: [
+                            '#4CAF50',
+                            '#2196F3'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            // Update existing chart
+            this.cameraDetailChart.data.datasets[0].data = [camera.total_in, camera.total_out];
+            this.cameraDetailChart.update();
+        }
+
+        modal.classList.add('active');
     }
 
     async editCameraName(camera) {

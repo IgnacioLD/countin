@@ -1924,3 +1924,109 @@ body.drawing-active #line-canvas {
         font-size: 1.25rem;
     }
 }
+
+/* Hub Dashboard Charts */
+.hub-charts-container {
+    background: var(--bg-color);
+    padding: 2rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+.hub-charts-container h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+}
+
+.hub-chart-wrapper {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Camera Detail Modal */
+.camera-detail-content {
+    max-width: 800px;
+    position: relative;
+}
+
+.close-modal-btn {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.close-modal-btn:hover {
+    background: var(--surface-color);
+    color: var(--text-color);
+}
+
+.camera-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.camera-detail-chart {
+    margin-top: 2rem;
+}
+
+.camera-detail-chart h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+}
+
+.camera-detail-chart canvas {
+    max-height: 300px;
+}
+
+/* Camera Card Updates */
+.camera-card {
+    cursor: default;
+    transition: var(--transition);
+}
+
+.camera-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 768px) {
+    .hub-chart-wrapper {
+        height: 250px;
+    }
+
+    .camera-detail-stats {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .camera-detail-chart canvas {
+        max-height: 200px;
+    }
+
+    .close-modal-btn {
+        top: 1rem;
+        right: 1rem;
+    }
+}

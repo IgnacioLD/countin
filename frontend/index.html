@@ -231,10 +231,45 @@
                 </div>
             </div>
 
+            <div class="hub-charts-container">
+                <h3>Activity Overview</h3>
+                <div class="hub-chart-wrapper">
+                    <canvas id="hub-overview-chart"></canvas>
+                </div>
+            </div>
+
             <div class="camera-list">
                 <h3>Connected Cameras</h3>
                 <div id="hub-camera-list" class="camera-grid">
                     <div class="empty-state">No cameras connected yet</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Camera Detail Modal -->
+        <div id="camera-detail-modal" class="modal">
+            <div class="modal-content camera-detail-content">
+                <h2 id="camera-detail-name">Camera Details</h2>
+                <button id="close-camera-detail" class="btn btn-icon close-modal-btn">×</button>
+
+                <div class="camera-detail-stats">
+                    <div class="stat-box">
+                        <div class="stat-value" id="camera-detail-in">0</div>
+                        <div class="stat-label">In</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="camera-detail-out">0</div>
+                        <div class="stat-label">Out</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="camera-detail-total">0</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                </div>
+
+                <div class="camera-detail-chart">
+                    <h3>Count History</h3>
+                    <canvas id="camera-detail-chart"></canvas>
                 </div>
             </div>
         </div>

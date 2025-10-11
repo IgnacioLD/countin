@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.15.0",
-    "@tensorflow-models/coco-ssd": "^2.2.3"
+    "@tensorflow-models/coco-ssd": "^2.2.3",
+    "qrcode": "^1.5.3"
   },
   "devDependencies": {
     "vite": "^5.0.11"

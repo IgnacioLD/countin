@@ -9,6 +9,7 @@ import { PersonTracker } from './tracker.js';
 import { LineManager } from './line-manager.js';
 import { CountingVisualization } from './visualization.js';
 import QRCode from 'qrcode';
+import './rfdetr-adapter.js';
 
 class CountInApp {
     constructor() {

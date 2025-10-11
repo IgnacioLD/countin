@@ -1487,6 +1487,23 @@ body.drawing-active #line-canvas {
     margin-top: 0.25rem;
 }
 
+.camera-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #b91c1c;
+}
+
 /* Camera Station View */
 .camera-view {
     padding: 2rem 2.5rem;

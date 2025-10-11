@@ -182,6 +182,10 @@ class CountInApp {
             hubView.style.display = 'none';
             cameraView.style.display = 'none';
 
+            // Show mode indicator (Setup/Counting) for standalone mode
+            const modeIndicator = document.querySelector('.mode-indicator');
+            if (modeIndicator) modeIndicator.style.display = 'flex';
+
             // Show camera selector and continue to setup
             this.cameraSelector.show();
 
@@ -207,6 +211,10 @@ class CountInApp {
             hubView.style.display = 'block';
             cameraView.style.display = 'none';
 
+            // Hide mode indicator (Setup/Counting) - not applicable for hub
+            const modeIndicator = document.querySelector('.mode-indicator');
+            if (modeIndicator) modeIndicator.style.display = 'none';
+
             this.isOnboarding = false;
             this.initializeHubDashboard();
         } else if (mode === 'camera') {
@@ -217,6 +225,10 @@ class CountInApp {
             logContainer.style.display = 'block';
             hubView.style.display = 'none';
             cameraView.style.display = 'block';
+
+            // Hide mode indicator (Setup/Counting) - not applicable for camera
+            const modeIndicator = document.querySelector('.mode-indicator');
+            if (modeIndicator) modeIndicator.style.display = 'none';
 
             this.isOnboarding = false;
             this.initializeCameraStation();
@@ -1122,12 +1134,14 @@ class CountInApp {
         for (const camera of cameras) {
             const cameraCard = document.createElement('div');
             cameraCard.className = 'camera-card';
+            cameraCard.dataset.cameraId = camera.id;
 
             const header = document.createElement('div');
             header.className = 'camera-card-header';
 
             const name = document.createElement('h4');
             name.textContent = camera.name;
+            name.className = 'camera-name-display';
             header.appendChild(name);
 
             const status = document.createElement('div');
@@ -1158,7 +1172,73 @@ class CountInApp {
             `;
             cameraCard.appendChild(stats);
 
+            // Add action buttons
+            const actions = document.createElement('div');
+            actions.className = 'camera-card-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn btn-secondary btn-small';
+            editBtn.textContent = 'Edit Name';
+            editBtn.onclick = () => this.editCameraName(camera);
+            actions.appendChild(editBtn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-danger btn-small';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.onclick = () => this.deleteCamera(camera);
+            actions.appendChild(deleteBtn);
+
+            cameraCard.appendChild(actions);
             cameraList.appendChild(cameraCard);
+        }
+    }
+
+    async editCameraName(camera) {
+        const newName = prompt('Enter new name for camera:', camera.name);
+        if (!newName || newName === camera.name) return;
+
+        try {
+            const response = await fetch(`${apiService.baseUrl}/cameras/${camera.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: newName })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update camera name');
+            }
+
+            this.log(`Camera renamed to "${newName}"`, 'success');
+
+            // Refresh the camera list
+            await this.pollHubStats();
+        } catch (error) {
+            console.error('Edit camera error:', error);
+            this.log('Failed to update camera name: ' + error.message, 'error');
+        }
+    }
+
+    async deleteCamera(camera) {
+        if (!confirm(`Are you sure you want to delete "${camera.name}"? This cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${apiService.baseUrl}/cameras/${camera.id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to delete camera');
+            }
+
+            this.log(`Camera "${camera.name}" deleted`, 'success');
+
+            // Refresh the camera list
+            await this.pollHubStats();
+        } catch (error) {
+            console.error('Delete camera error:', error);
+            this.log('Failed to delete camera: ' + error.message, 'error');
         }
     }
 

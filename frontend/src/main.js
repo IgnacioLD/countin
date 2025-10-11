@@ -454,7 +454,7 @@ class CountInApp {
 
         // Settings modal
         this.settingsBtn.addEventListener('click', () => {
-            this.settingsModal.classList.add('active');
+            this.settingsModal.classList.toggle('active');
         });
 
         this.closeSettingsBtn.addEventListener('click', () => {

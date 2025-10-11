@@ -1,0 +1,61 @@
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: countin-db-dev
+    environment:
+      POSTGRES_USER: countin
+      POSTGRES_PASSWORD: countin
+      POSTGRES_DB: countin
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U countin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend (Development mode with auto-reload)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: countin-backend-dev
+    environment:
+      DATABASE_URL: postgresql://countin:countin@db:5432/countin
+      BACKEND_CORS_ORIGINS: http://localhost,http://localhost:3000,http://localhost:5173
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend Development Server (Vite)
+  frontend:
+    image: node:20-alpine
+    container_name: countin-frontend-dev
+    working_dir: /app
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 3000"
+
+volumes:
+  postgres_data_dev:
+    driver: local
+
+networks:
+  default:
+    name: countin-network-dev

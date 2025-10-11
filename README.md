@@ -7,210 +7,237 @@ Browser-based people counting system using computer vision AI for event occupanc
 
 ## Overview
 
-CountIn is a real-time people counting application that uses computer vision to track occupancy levels for events, venues, and public spaces. Built entirely in the browser with TensorFlow.js, it provides accurate directional counting (in/out) through customizable virtual counting lines.
+CountIn is a real-time people counting application that uses computer vision to track occupancy levels for events, venues, and public spaces. Built with TensorFlow.js for frontend ML and FastAPI for backend data management.
 
 ### Key Features
 
-- **Real-Time Person Detection**: TensorFlow.js with COCO-SSD/RF-DETR models for accurate detection
-- **Custom Tracking Algorithms**: Built-from-scratch person tracking with confidence-based matching
-- **Directional Counting**: Draw virtual lines to count people entering/exiting specific areas
-- **Browser-Based Edge AI**: No server required, all processing happens locally in the browser
-- **Privacy-First**: No data leaves your device, completely offline-capable
-- **Multi-Line Support**: Track multiple entrances/exits simultaneously
-- **Real-Time Visualization**: Live charts and statistics dashboard
-- **Zero Installation**: Works directly in any modern web browser
+- **Real-Time Person Detection**: TensorFlow.js with COCO-SSD models
+- **Custom Tracking Algorithms**: Built-from-scratch person tracking
+- **Directional Counting**: Virtual lines to count people entering/exiting
+- **Camera Selection**: Choose from multiple connected webcams
+- **Data Persistence**: PostgreSQL backend for session storage
+- **Real-Time API**: FastAPI backend with WebSocket support
+- **Export Features**: JSON data export for analysis
+- **Privacy-First**: Browser-based detection, optional cloud storage
 
-## Technical Architecture
+## Tech Stack
 
-### Computer Vision Pipeline
+### Frontend
+- **ML Framework**: TensorFlow.js
+- **Build Tool**: Vite
+- **Detection**: COCO-SSD person detection
+- **UI**: Vanilla JavaScript (ES6+), HTML5 Canvas
 
-```
-Webcam Feed → TensorFlow.js Detection → Custom Tracking → Line Crossing Detection → Count Updates
-```
+### Backend
+- **API**: FastAPI (Python)
+- **Database**: PostgreSQL
+- **ORM**: SQLAlchemy
+- **WebSocket**: FastAPI WebSockets for real-time updates
 
-### Core Technologies
+### Deployment
+- **Containerization**: Docker & Docker Compose
+- **Web Server**: Nginx
+- **Orchestration**: Coolify-ready
 
-- **ML Framework**: TensorFlow.js (browser-based inference)
-- **Detection Models**: COCO-SSD, RF-DETR (person detection)
-- **Custom Algorithms**:
-  - Person tracking with centroid-based matching
-  - Line-crossing detection using geometric algorithms
-  - Confidence thresholding and noise filtering
-- **Frontend**: Vanilla JavaScript (ES6+), HTML5 Canvas, CSS3
-- **Performance**: Processes every 2nd frame for real-time performance
+## Quick Start
 
-### Architecture Highlights
+### Development Mode
 
-- **PersonTracker Class**: Custom implementation with configurable confidence thresholds, disappearance tracking, and position history
-- **LineManager**: Geometric line-crossing detection with directional awareness
-- **Real-time Visualization**: Chart updates with historical data tracking
-- **Mocked Server Sync**: Ready for backend integration (optional)
-
-## Use Cases
-
-- **Event Management**: Track attendee count at conferences, concerts, festivals
-- **Retail Analytics**: Monitor customer flow and peak hours
-- **Safety Compliance**: Ensure venue capacity limits are maintained
-- **Crowd Management**: Real-time occupancy for public spaces
-- **Research & Education**: Computer vision learning and experimentation
-
-## Getting Started
-
-### Quick Start
-
-1. Clone the repository:
 ```bash
+# Clone repository
 git clone https://github.com/IgnacioLD/countin.git
 cd countin
+
+# Start all services with Docker Compose
+docker-compose -f docker-compose.dev.yml up
+
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:8000
+# API Docs: http://localhost:8000/docs
 ```
 
-2. Serve locally (any HTTP server works):
+### Production Mode
+
 ```bash
-# Python 3
-python -m http.server 8000
+# Build and run production containers
+docker-compose up -d
 
-# Node.js
-npx serve
-
-# Or just open index.html in a modern browser
+# Access at http://localhost
 ```
-
-3. Open `http://localhost:8000` in your browser
-
-4. Allow camera access when prompted
-
-### Basic Usage
-
-1. **Setup Mode**: Draw counting lines across entrances/exits
-   - Click "Add Line" and drag to create a virtual counting line
-   - Add multiple lines for different entrances
-   - Name each line for easy tracking
-
-2. **Counting Mode**: Start tracking people
-   - Switch to "Counting Mode"
-   - Camera will activate and detection begins
-   - People crossing lines are counted directionally (in/out)
-   - View real-time statistics and charts
-
-3. **Monitor Results**:
-   - Total occupancy displayed in real-time
-   - Per-line statistics showing in/out counts
-   - Activity log with timestamps
-   - Visualization charts showing trends
 
 ## Project Structure
 
 ```
 countin/
-├── index.html              # Main application HTML
-├── css/
-│   └── styles.css         # Application styling
-├── js/
-│   ├── app.js             # Main application controller
-│   ├── rfdetr-adapter.js  # TensorFlow.js model integration
-│   ├── tracker.js         # Custom person tracking algorithms
-│   ├── line-manager.js    # Line drawing and crossing detection
-│   ├── visualization.js   # Charts and data visualization
-│   └── init.js            # Application initialization
+├── frontend/                 # Vite-based frontend
+│   ├── src/
+│   │   ├── components/      # UI components
+│   │   ├── services/        # API & camera services
+│   │   ├── tracker.js       # Person tracking logic
+│   │   ├── line-manager.js  # Line crossing detection
+│   │   └── main.js          # Application entry point
+│   ├── Dockerfile
+│   └── package.json
+│
+├── backend/                  # FastAPI backend
+│   ├── app/
+│   │   ├── api/             # API endpoints
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── schemas/         # Pydantic schemas
+│   │   ├── core/            # Config & database
+│   │   └── main.py          # FastAPI app
+│   ├── Dockerfile
+│   └── requirements.txt
+│
+├── docker-compose.yml        # Production setup
+├── docker-compose.dev.yml    # Development setup
 └── README.md
 ```
 
-## Technical Implementation
+## API Endpoints
 
-### Person Detection
+### Sessions
+- `POST /api/v1/sessions/` - Create new session
+- `GET /api/v1/sessions/` - List sessions
+- `GET /api/v1/sessions/{id}` - Get session details
+- `POST /api/v1/sessions/{id}/end` - End session
+- `GET /api/v1/sessions/{id}/stats` - Get session statistics
 
-Uses TensorFlow.js COCO-SSD model to detect people in each frame:
-```javascript
-const predictions = await model.detect(videoElement);
-const people = predictions.filter(p => p.class === 'person' && p.score > 0.4);
+### Counting Lines
+- `POST /api/v1/lines/` - Create counting line
+- `GET /api/v1/lines/session/{id}` - Get session lines
+- `PATCH /api/v1/lines/{id}` - Update line
+- `DELETE /api/v1/lines/{id}` - Delete line
+
+### Events
+- `POST /api/v1/events/` - Record crossing event
+- `GET /api/v1/events/session/{id}` - Get session events
+
+### WebSocket
+- `WS /api/v1/ws/{session_id}` - Real-time session updates
+
+Full API documentation available at `/docs` when backend is running.
+
+## Usage
+
+### 1. Camera Setup
+- Click "Change Camera" to select from available webcams
+- Grant camera permissions when prompted
+- Choose your preferred camera from the list
+
+### 2. Setup Mode
+- Draw counting lines across entrances/exits
+- Click "Add Line" and drag to create virtual lines
+- Name each line for easy tracking
+- Add multiple lines for different entrances
+
+### 3. Counting Mode
+- Switch to "Counting Mode" to start tracking
+- People crossing lines are counted directionally (in/out)
+- View real-time statistics and charts
+- Activity log shows all crossing events
+
+### 4. Session Management
+- Name your session for easy identification
+- Click "Save Session" to end and store data
+- Use "Export Data" to download JSON report
+- View historical sessions via API
+
+## Environment Variables
+
+```bash
+# Database
+DATABASE_URL=postgresql://countin:countin@db:5432/countin
+
+# CORS Origins (comma-separated)
+BACKEND_CORS_ORIGINS=http://localhost,http://localhost:3000
+
+# API Configuration
+API_V1_STR=/api/v1
+PROJECT_NAME=CountIn API
 ```
 
-### Custom Tracking Algorithm
+## Deployment
 
-Implements centroid-based tracking with:
-- Euclidean distance matching between frames
-- Confidence thresholding to filter false positives
-- Disappearance tracking (maintains IDs for temporarily occluded people)
-- Position history for trajectory analysis
+### Coolify Deployment
 
-### Line Crossing Detection
+1. **Create New Project** in Coolify
+2. **Add Git Repository**: Link your CountIn repo
+3. **Configure Services**:
+   - Database: PostgreSQL 15
+   - Backend: Dockerfile (./backend/Dockerfile)
+   - Frontend: Dockerfile (./frontend/Dockerfile)
+4. **Environment Variables**: Set `DATABASE_URL` and `BACKEND_CORS_ORIGINS`
+5. **Deploy**: Coolify handles orchestration
 
-Geometric algorithm detecting when a person's trajectory crosses a virtual line:
-```javascript
-// Line intersection using vector math
-function checkLineCrossing(prevPos, currentPos, lineStart, lineEnd) {
-  // Calculate if the movement vector intersects the counting line
-  // Determine direction (in/out) based on cross product
-}
+### Manual VPS Deployment
+
+```bash
+# On your VPS
+git clone <your-repo>
+cd countin
+
+# Copy and configure environment
+cp .env.example .env
+nano .env  # Update credentials
+
+# Build and start
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
 ```
 
-### Performance Optimization
+## Development
 
-- Processes every nth frame (configurable, default: 2)
-- Canvas-based rendering for efficient visualization
-- Minimal DOM manipulation for smooth UI
-- Efficient tracking state management
+### Frontend Development
 
-## Configuration
-
-### Detection Settings
-
-```javascript
-const tracker = new PersonTracker({
-  confidenceThreshold: 0.4,     // Minimum detection confidence
-  maxDisappearedFrames: 15,     // Frames before removing lost tracks
-  historyLength: 10,            // Position history for trajectory
-  detectionInterval: 2          // Process every nth frame
-});
+```bash
+cd frontend
+npm install
+npm run dev  # Development server on port 3000
+npm run build  # Production build
 ```
 
-### Server Sync (Optional)
+### Backend Development
 
-Mock server integration included for future backend connectivity:
-- Configurable sync intervals (30s, 1min, 5min, 10min)
-- Manual sync trigger
-- Data payload includes counts and timestamps
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+pip install -r requirements.txt
+uvicorn app.main:app --reload  # Development server on port 8000
+```
+
+### Database Migrations (Optional - using Alembic)
+
+```bash
+cd backend
+alembic revision --autogenerate -m "Description"
+alembic upgrade head
+```
 
 ## Browser Requirements
 
-- Modern browser with WebRTC support (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
+- Modern browser with WebRTC (Chrome 90+, Firefox 88+, Safari 14+, Edge 90+)
 - Webcam access
 - JavaScript enabled
-- Minimum 4GB RAM recommended for smooth performance
+- 4GB+ RAM recommended
 
 ## Performance
 
-- **Detection Speed**: ~250-500ms per frame (depends on hardware)
-- **Real-time Capable**: Processes every 2nd frame at 30fps video
-- **Memory Usage**: ~200-500MB (TensorFlow.js models cached)
-- **Accuracy**: ~85-95% depending on lighting and camera quality
-
-## Future Enhancements
-
-- [ ] Additional ML models (YOLOv5, MobileNet)
-- [ ] Advanced tracking (DeepSORT, Kalman filtering)
-- [ ] Backend API integration for data persistence
-- [ ] Multi-camera support
-- [ ] Heatmap visualization
-- [ ] Export reports (CSV, JSON, PDF)
-- [ ] Mobile app version (React Native + ONNX)
-
-## Use in Research/Education
-
-CountIn is ideal for:
-- Computer vision coursework and demos
-- Real-time ML inference examples
-- Edge AI demonstrations
-- Event management case studies
-- Browser-based ML capabilities showcase
+- **Detection Speed**: ~250-500ms per frame
+- **Real-time**: Processes every 2nd frame at 30fps
+- **Memory**: ~200-500MB (TensorFlow.js models)
+- **Accuracy**: ~85-95% (depends on lighting/camera quality)
 
 ## Privacy & Ethics
 
-- **No Data Collection**: All processing happens locally in browser
-- **No Server Communication**: Optional mocked server sync for demo only
-- **Camera Privacy**: Users must explicitly grant camera permissions
-- **GDPR Compliant**: No personal data stored or transmitted
-- **Ethical Use**: Intended for occupancy counting, not individual tracking/surveillance
+- **Local Processing**: ML runs in browser, no video data sent to server
+- **Optional Cloud Storage**: Only counting events stored, not video
+- **Camera Privacy**: Explicit user permission required
+- **GDPR Compliant**: No personal data stored
+- **Ethical Use**: Designed for occupancy counting, not surveillance
 
 ## License
 
@@ -227,7 +254,8 @@ MIT License - see [LICENSE](LICENSE) for details
 
 - TensorFlow.js team for browser-based ML
 - COCO-SSD model contributors
-- Inspired by real-world event management needs
+- FastAPI framework
+- Open source community
 
 ---
 

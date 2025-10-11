@@ -30,6 +30,9 @@ class Settings(BaseSettings):
         """Get CORS origins based on environment"""
         origins = [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",")]
 
+        # Filter out wildcard patterns - those are handled by allow_origin_regex
+        origins = [origin for origin in origins if '*' not in origin]
+
         # Add localhost in development
         if self.ENV == "development":
             origins.extend([

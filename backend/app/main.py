@@ -5,7 +5,7 @@ from app.core.database import engine, Base
 from app.api.v1.api import api_router
 
 # Import all models to register them with SQLAlchemy
-from app.models import Session, CountingLine, CrossingEvent, CountSnapshot
+from app.models import Session, CountingLine, CrossingEvent, CountSnapshot, HubSession, CameraStation
 
 # Create database tables
 Base.metadata.create_all(bind=engine)

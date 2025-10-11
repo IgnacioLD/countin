@@ -35,7 +35,51 @@ class ConnectionManager:
                     print(f"Error broadcasting to client: {e}")
 
 
+class HubConnectionManager:
+    """Manages WebSocket connections between cameras and hub dashboards"""
+
+    def __init__(self):
+        # Hub dashboards listening for updates
+        self.hub_dashboards: Dict[int, List[WebSocket]] = {}
+        # Camera stations connected to hubs
+        self.camera_connections: Dict[int, WebSocket] = {}
+
+    async def connect_hub(self, websocket: WebSocket, hub_id: int):
+        """Connect a hub dashboard"""
+        await websocket.accept()
+        if hub_id not in self.hub_dashboards:
+            self.hub_dashboards[hub_id] = []
+        self.hub_dashboards[hub_id].append(websocket)
+
+    async def connect_camera(self, websocket: WebSocket, camera_id: int):
+        """Connect a camera station"""
+        await websocket.accept()
+        self.camera_connections[camera_id] = websocket
+
+    def disconnect_hub(self, websocket: WebSocket, hub_id: int):
+        """Disconnect a hub dashboard"""
+        if hub_id in self.hub_dashboards:
+            self.hub_dashboards[hub_id].remove(websocket)
+            if not self.hub_dashboards[hub_id]:
+                del self.hub_dashboards[hub_id]
+
+    def disconnect_camera(self, camera_id: int):
+        """Disconnect a camera station"""
+        if camera_id in self.camera_connections:
+            del self.camera_connections[camera_id]
+
+    async def broadcast_to_hub(self, hub_id: int, message: dict):
+        """Broadcast a message to all dashboards viewing this hub"""
+        if hub_id in self.hub_dashboards:
+            for connection in self.hub_dashboards[hub_id]:
+                try:
+                    await connection.send_json(message)
+                except Exception as e:
+                    print(f"Error broadcasting to hub dashboard: {e}")
+
+
 manager = ConnectionManager()
+hub_manager = HubConnectionManager()
 
 
 @router.websocket("/{session_id}")
@@ -67,3 +111,58 @@ async def broadcast_event(session_id: int, event_type: str, data: dict):
     """Helper to broadcast events from other endpoints"""
     message = {"type": event_type, "data": data}
     await manager.broadcast_to_session(session_id, message)
+
+
+@router.websocket("/hub/{hub_id}")
+async def hub_websocket_endpoint(websocket: WebSocket, hub_id: int):
+    """WebSocket endpoint for hub dashboard to receive camera updates"""
+    await hub_manager.connect_hub(websocket, hub_id)
+    try:
+        while True:
+            # Hub dashboards only receive, they don't send
+            data = await websocket.receive_text()
+            message = json.loads(data)
+
+            if message.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+
+    except WebSocketDisconnect:
+        hub_manager.disconnect_hub(websocket, hub_id)
+    except Exception as e:
+        print(f"Hub WebSocket error: {e}")
+        hub_manager.disconnect_hub(websocket, hub_id)
+
+
+@router.websocket("/camera/{camera_id}")
+async def camera_websocket_endpoint(websocket: WebSocket, camera_id: int):
+    """WebSocket endpoint for camera stations to send count updates"""
+    await hub_manager.connect_camera(websocket, camera_id)
+    try:
+        while True:
+            # Receive count events from camera
+            data = await websocket.receive_text()
+            message = json.loads(data)
+
+            # Broadcast to hub dashboards
+            if message.get("type") == "count_update":
+                # Message should include: camera_id, hub_id, direction, counts
+                hub_id = message.get("hub_id")
+                if hub_id:
+                    await hub_manager.broadcast_to_hub(hub_id, message)
+
+            elif message.get("type") == "heartbeat":
+                # Acknowledge heartbeat
+                await websocket.send_json({"type": "heartbeat_ack"})
+
+    except WebSocketDisconnect:
+        hub_manager.disconnect_camera(camera_id)
+    except Exception as e:
+        print(f"Camera WebSocket error: {e}")
+        hub_manager.disconnect_camera(camera_id)
+
+
+# Helper function to broadcast hub updates
+async def broadcast_to_hub(hub_id: int, event_type: str, data: dict):
+    """Helper to broadcast events to hub dashboards"""
+    message = {"type": event_type, "data": data}
+    await hub_manager.broadcast_to_hub(hub_id, message)

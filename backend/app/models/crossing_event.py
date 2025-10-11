@@ -11,6 +11,7 @@ class CrossingEvent(Base):
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("sessions.id"), nullable=False)
     line_id = Column(Integer, ForeignKey("counting_lines.id"), nullable=False)
+    camera_station_id = Column(Integer, ForeignKey("camera_stations.id"), nullable=True)  # For hub mode
 
     # Event details
     person_id = Column(String, nullable=False)  # Tracker ID
@@ -29,3 +30,4 @@ class CrossingEvent(Base):
     # Relationships
     session = relationship("Session", back_populates="crossing_events")
     line = relationship("CountingLine", back_populates="crossing_events")
+    camera_station = relationship("CameraStation", back_populates="crossing_events")

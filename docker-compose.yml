@@ -1,3 +1,16 @@
+# CountIn Docker Compose Configuration for Coolify
+#
+# Required Coolify Environment Variables:
+# - VITE_API_URL: https://api.countin.ignacio.tech
+# - BACKEND_CORS_ORIGINS: https://countin.ignacio.tech,https://*.countin.ignacio.tech
+# - DATABASE_URL: postgresql://user:pass@db:5432/countin
+# - POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+# - ENV: production
+#
+# Coolify Service FQDNs:
+# - Frontend: countin.ignacio.tech (port 3000)
+# - Backend: api.countin.ignacio.tech (port 8000)
+
 services:
   # PostgreSQL Database (Internal only - not exposed to host)
   db:
@@ -28,6 +41,10 @@ services:
     networks:
       - countin-network
     restart: unless-stopped
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=application"
+      - "coolify.name=backend"
 
   # Frontend (Vite)
   frontend:
@@ -37,11 +54,18 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-https://api.countin.ignacio.tech}
     container_name: countin-frontend
+    environment:
+      # Make VITE_API_URL available at runtime for debugging
+      VITE_API_URL: ${VITE_API_URL:-https://api.countin.ignacio.tech}
     expose:
       - "3000"
     networks:
       - countin-network
     restart: unless-stopped
+    labels:
+      - "coolify.managed=true"
+      - "coolify.type=application"
+      - "coolify.name=frontend"
 
 volumes:
   postgres_data:

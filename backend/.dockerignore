@@ -10,3 +10,11 @@ venv
 *.log
 .pytest_cache
 .coverage
+.git
+.gitignore
+README.md
+*.md
+.vscode
+.idea
+node_modules
+frontend

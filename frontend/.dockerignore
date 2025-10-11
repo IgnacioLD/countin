@@ -3,3 +3,14 @@ npm-debug.log
 .env
 .env.local
 dist
+.git
+.gitignore
+README.md
+*.md
+.vscode
+.idea
+*.log
+coverage
+.coverage
+.pytest_cache
+__pycache__

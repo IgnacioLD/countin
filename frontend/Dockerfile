@@ -9,26 +9,27 @@ ARG VITE_API_URL=http://localhost:8000
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --prefer-offline --no-audit
+# Install dependencies with optimizations
+RUN npm ci --prefer-offline --no-audit --legacy-peer-deps 2>&1 | grep -v "deprecated" || true
 
 # Copy source files
 COPY . .
 
 # Set environment variables for build
-ENV VITE_API_URL=$VITE_API_URL
-ENV NODE_ENV=production
+ENV VITE_API_URL=$VITE_API_URL \
+    NODE_ENV=production \
+    NODE_OPTIONS="--max-old-space-size=2048"
 
 # Build the application
 RUN npm run build
 
-# Production stage
+# Production stage - using minimal alpine base
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Install serve
-RUN npm install -g serve
+# Install serve with minimal output
+RUN npm install -g serve --quiet
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist

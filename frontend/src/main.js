@@ -441,6 +441,35 @@ class CountInApp {
             window.location.href = window.location.origin;
         });
 
+        // Change mode button in settings
+        const changeModeBtn = document.getElementById('change-mode-btn');
+        if (changeModeBtn) {
+            changeModeBtn.addEventListener('click', () => {
+                // Close settings modal
+                this.settingsModal.classList.remove('active');
+
+                // Clear saved mode
+                localStorage.removeItem('countin-app-mode');
+                localStorage.removeItem('countin-hub-session-id');
+                localStorage.removeItem('countin-camera-station-id');
+
+                // Show onboarding to select mode again
+                const onboardingModal = document.getElementById('onboarding-modal');
+                const step1 = onboardingModal.querySelector('[data-step="1"]');
+                const step2 = onboardingModal.querySelector('[data-step="2"]');
+
+                // Reset to step 1
+                if (step1) step1.classList.remove('active');
+                if (step2) step2.classList.add('active');
+
+                onboardingModal.classList.add('active');
+                this.onboardingStep = 2;
+                this.isOnboarding = true;
+
+                this.log('Mode change initiated', 'info');
+            });
+        }
+
         // Window resize handler for responsive canvas
         window.addEventListener('resize', () => {
             this.resizeCanvases();
@@ -853,10 +882,17 @@ class CountInApp {
             this.hubPairingCodeActual = this.hubSession.pairing_code;
             this.hubPairingCodeVisible = false;
 
+            // Initialize the code display (hidden by default)
+            const codeElement = document.getElementById('hub-pairing-code');
+            if (codeElement) {
+                codeElement.textContent = '••••••';
+                codeElement.classList.add('code-hidden');
+            }
+
             // Save to localStorage
             localStorage.setItem('countin-hub-session-id', this.hubSession.id);
 
-            this.log(`Hub created successfully`, 'success');
+            this.log(`Hub created successfully with code: ${this.hubPairingCodeActual}`, 'success');
 
             // Connect to WebSocket for real-time updates
             this.connectHubWebSocket();
@@ -896,6 +932,22 @@ class CountInApp {
         const codeElement = document.getElementById('hub-pairing-code');
         const toggleBtn = document.getElementById('toggle-code-btn');
 
+        console.log('Toggle pairing code clicked');
+        console.log('Current code:', this.hubPairingCodeActual);
+        console.log('Code element:', codeElement);
+        console.log('Toggle button:', toggleBtn);
+
+        if (!codeElement || !toggleBtn) {
+            console.error('Code element or toggle button not found!');
+            return;
+        }
+
+        if (!this.hubPairingCodeActual) {
+            console.error('No pairing code available!');
+            this.log('Pairing code not available', 'error');
+            return;
+        }
+
         this.hubPairingCodeVisible = !this.hubPairingCodeVisible;
 
         if (this.hubPairingCodeVisible) {
@@ -914,17 +966,36 @@ class CountInApp {
     }
 
     async showQRCode() {
-        if (!this.hubSession) return;
+        console.log('Show QR Code clicked');
+        console.log('Hub session:', this.hubSession);
+
+        if (!this.hubSession) {
+            console.error('No hub session available!');
+            this.log('No hub session available', 'error');
+            return;
+        }
+
+        if (!this.hubSession.pairing_token) {
+            console.error('No pairing token in hub session!');
+            this.log('No pairing token available', 'error');
+            return;
+        }
 
         const qrModal = document.getElementById('qr-modal');
         const qrCodeDisplay = document.getElementById('qr-code-display');
         const qrPairingCode = document.getElementById('qr-pairing-code');
+
+        if (!qrModal || !qrCodeDisplay || !qrPairingCode) {
+            console.error('QR modal elements not found!');
+            return;
+        }
 
         // Clear previous QR code
         qrCodeDisplay.innerHTML = '';
 
         // Generate QR code with pairing token
         const pairingURL = `${window.location.origin}?pair=${this.hubSession.pairing_token}`;
+        console.log('Generating QR for URL:', pairingURL);
 
         try {
             const canvas = document.createElement('canvas');
@@ -941,7 +1012,9 @@ class CountInApp {
             qrPairingCode.textContent = this.hubSession.pairing_code;
 
             qrModal.classList.add('active');
+            this.log('QR code displayed', 'success');
         } catch (error) {
+            console.error('QR code generation error:', error);
             this.log('Failed to generate QR code: ' + error.message, 'error');
         }
     }

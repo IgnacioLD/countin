@@ -31,9 +31,12 @@ class CountInApp {
 
         // Line controls
         this.clearLinesBtn = document.getElementById('clear-lines-btn');
+        this.clearLinesSidebarBtn = document.getElementById('clear-lines-sidebar');
         this.lineListEl = document.getElementById('line-list');
         this.lineModeBtn = document.getElementById('line-mode-btn');
         this.areaModeBtn = document.getElementById('area-mode-btn');
+        this.lineModeSidebarBtn = document.getElementById('line-mode-sidebar');
+        this.areaModeSidebarBtn = document.getElementById('area-mode-sidebar');
 
         // Stats elements
         this.totalCountEl = document.querySelector('#total-count .stat-value');
@@ -464,10 +467,19 @@ class CountInApp {
 
         // Line controls
         this.clearLinesBtn.addEventListener('click', () => this.lineManager.clearLines());
+        this.clearLinesSidebarBtn.addEventListener('click', () => {
+            if (confirm('Clear all lines and areas?')) {
+                this.lineManager.clearLines();
+            }
+        });
 
         // Drawing mode buttons (in settings modal)
         this.lineModeBtn.addEventListener('click', () => this.setDrawingMode('line'));
         this.areaModeBtn.addEventListener('click', () => this.setDrawingMode('area'));
+
+        // Drawing mode buttons (in sidebar)
+        this.lineModeSidebarBtn.addEventListener('click', () => this.setDrawingMode('line'));
+        this.areaModeSidebarBtn.addEventListener('click', () => this.setDrawingMode('area'));
 
         // Settings modal
         this.settingsBtn.addEventListener('click', () => {
@@ -628,13 +640,17 @@ class CountInApp {
     }
 
     setDrawingMode(mode) {
-        // Update button active states
+        // Update button active states (settings modal)
         if (mode === 'line') {
             this.lineModeBtn.classList.add('active');
             this.areaModeBtn.classList.remove('active');
+            this.lineModeSidebarBtn.classList.add('active');
+            this.areaModeSidebarBtn.classList.remove('active');
         } else if (mode === 'area') {
             this.lineModeBtn.classList.remove('active');
             this.areaModeBtn.classList.add('active');
+            this.lineModeSidebarBtn.classList.remove('active');
+            this.areaModeSidebarBtn.classList.add('active');
         }
 
         // Set the drawing mode on the line manager

@@ -591,6 +591,13 @@ header h1 {
 }
 
 /* Line List */
+.line-controls {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 .line-list {
     max-height: 250px;
     overflow-y: auto;

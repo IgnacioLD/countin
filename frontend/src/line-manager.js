@@ -717,10 +717,10 @@ export class LineManager {
         ctx.save();
 
         if (isMirrored) {
-            // Undo the canvas mirroring for text only
-            ctx.translate(x, 0);
+            // When canvas is CSS-mirrored, flip text in opposite direction
+            // to make it appear normal
+            ctx.translate(x * 2, 0);
             ctx.scale(-1, 1);
-            ctx.translate(-x, 0);
         }
 
         ctx.font = '14px Arial';

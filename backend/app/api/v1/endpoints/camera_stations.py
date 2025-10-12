@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.post("/pair", response_model=CameraStationResponse, status_code=status.HTTP_201_CREATED)
-def pair_camera_station(pair_data: CameraStationPair, db: Session = Depends(get_db)):
+async def pair_camera_station(pair_data: CameraStationPair, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Pair a camera station with a hub using code or token"""
 
     # Find hub by pairing code or token
@@ -42,7 +42,28 @@ def pair_camera_station(pair_data: CameraStationPair, db: Session = Depends(get_
     db.add(camera)
     db.commit()
     db.refresh(camera)
+
+    # Notify hub dashboard about new camera
+    background_tasks.add_task(notify_camera_connected, hub.id, camera)
+
     return camera
+
+
+async def notify_camera_connected(hub_id: int, camera: CameraStation):
+    """Notify hub dashboard that a new camera connected"""
+    from app.api.v1.endpoints.websocket import hub_manager
+
+    await hub_manager.broadcast_to_hub(hub_id, {
+        "type": "camera_connected",
+        "camera": {
+            "id": camera.id,
+            "name": camera.name,
+            "location": camera.location,
+            "is_connected": camera.is_connected,
+            "total_in": camera.total_in,
+            "total_out": camera.total_out
+        }
+    })
 
 
 @router.get("/hub/{hub_id}", response_model=List[CameraStationResponse])

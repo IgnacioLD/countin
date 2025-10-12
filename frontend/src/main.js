@@ -32,11 +32,15 @@ class CountInApp {
         // Line controls
         this.clearLinesBtn = document.getElementById('clear-lines-btn');
         this.clearLinesSidebarBtn = document.getElementById('clear-lines-sidebar');
+        this.clearLinesCameraBtn = document.getElementById('clear-lines-camera');
         this.lineListEl = document.getElementById('line-list');
+        this.lineListCameraEl = document.getElementById('line-list-camera');
         this.lineModeBtn = document.getElementById('line-mode-btn');
         this.areaModeBtn = document.getElementById('area-mode-btn');
         this.lineModeSidebarBtn = document.getElementById('line-mode-sidebar');
         this.areaModeSidebarBtn = document.getElementById('area-mode-sidebar');
+        this.lineModeCameraBtn = document.getElementById('line-mode-camera');
+        this.areaModeCameraBtn = document.getElementById('area-mode-camera');
 
         // Stats elements
         this.totalCountEl = document.querySelector('#total-count .stat-value');
@@ -472,6 +476,11 @@ class CountInApp {
                 this.lineManager.clearLines();
             }
         });
+        this.clearLinesCameraBtn.addEventListener('click', () => {
+            if (confirm('Clear all lines and areas?')) {
+                this.lineManager.clearLines();
+            }
+        });
 
         // Drawing mode buttons (in settings modal)
         this.lineModeBtn.addEventListener('click', () => this.setDrawingMode('line'));
@@ -480,6 +489,10 @@ class CountInApp {
         // Drawing mode buttons (in sidebar)
         this.lineModeSidebarBtn.addEventListener('click', () => this.setDrawingMode('line'));
         this.areaModeSidebarBtn.addEventListener('click', () => this.setDrawingMode('area'));
+
+        // Drawing mode buttons (in camera sidebar)
+        this.lineModeCameraBtn.addEventListener('click', () => this.setDrawingMode('line'));
+        this.areaModeCameraBtn.addEventListener('click', () => this.setDrawingMode('area'));
 
         // Settings modal
         this.settingsBtn.addEventListener('click', () => {
@@ -640,17 +653,21 @@ class CountInApp {
     }
 
     setDrawingMode(mode) {
-        // Update button active states (settings modal)
+        // Update button active states (all locations)
         if (mode === 'line') {
             this.lineModeBtn.classList.add('active');
             this.areaModeBtn.classList.remove('active');
             this.lineModeSidebarBtn.classList.add('active');
             this.areaModeSidebarBtn.classList.remove('active');
+            this.lineModeCameraBtn.classList.add('active');
+            this.areaModeCameraBtn.classList.remove('active');
         } else if (mode === 'area') {
             this.lineModeBtn.classList.remove('active');
             this.areaModeBtn.classList.add('active');
             this.lineModeSidebarBtn.classList.remove('active');
             this.areaModeSidebarBtn.classList.add('active');
+            this.lineModeCameraBtn.classList.remove('active');
+            this.areaModeCameraBtn.classList.add('active');
         }
 
         // Set the drawing mode on the line manager
@@ -799,10 +816,12 @@ class CountInApp {
 
         if (lines.length === 0) {
             this.lineListEl.innerHTML = '<div class="empty-state">No lines added yet</div>';
+            this.lineListCameraEl.innerHTML = '<div class="empty-state">No lines added yet</div>';
             return;
         }
 
         this.lineListEl.innerHTML = '';
+        this.lineListCameraEl.innerHTML = '';
 
         for (const line of lines) {
             const lineItem = document.createElement('div');
@@ -893,7 +912,9 @@ class CountInApp {
 
             lineItem.appendChild(bottomRow);
 
+            // Append to both standalone and camera line lists
             this.lineListEl.appendChild(lineItem);
+            this.lineListCameraEl.appendChild(lineItem.cloneNode(true));
         }
     }
 

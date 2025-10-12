@@ -1575,8 +1575,10 @@ body.drawing-active #line-canvas {
     flex-direction: column;
     gap: 2rem;
     position: relative;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     transition: opacity 0.3s ease;
+    max-height: 100vh;
 }
 
 .camera-view.sidebar-hidden .camera-sidebar {
@@ -2059,5 +2061,52 @@ body.drawing-active #line-canvas {
     .close-modal-btn {
         top: 1rem;
         right: 1rem;
+    }
+
+    /* Camera sidebar mobile */
+    .camera-connected-main {
+        grid-template-columns: 1fr;
+        min-height: 100vh;
+    }
+
+    .camera-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 80%;
+        max-width: 320px;
+        height: 100vh;
+        z-index: 999;
+        transform: translateX(0);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .camera-view.sidebar-hidden .camera-sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar-toggle-camera {
+        left: auto !important;
+        right: 1rem;
+        top: 1rem;
+        z-index: 1001;
+    }
+
+    .camera-view.sidebar-hidden .sidebar-toggle-camera {
+        left: 1rem !important;
+        right: auto;
+    }
+
+    .camera-video-area {
+        width: 100%;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+
+    .line-list {
+        max-height: 200px;
     }
 }

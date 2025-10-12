@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CountIn - Real-Time Occupancy Tracker</title>
+    <link rel="icon" type="image/svg+xml" href="/logo.svg">
     <link rel="stylesheet" href="/src/styles.css">
     <!-- TensorFlow.js and COCO-SSD loaded dynamically when needed -->
 </head>
@@ -11,7 +12,10 @@
     <div class="container">
         <header>
             <div class="header-left">
-                <h1 id="logo-link" style="cursor: pointer;">CountIn</h1>
+                <div id="logo-link" style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                    <img src="/logo.svg" alt="CountIn Logo" style="height: 40px; width: auto;">
+                    <h1>CountIn</h1>
+                </div>
                 <span class="tagline-header">Privacy-focused people counting</span>
             </div>
             <div class="header-controls">

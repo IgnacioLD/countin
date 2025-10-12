@@ -1625,6 +1625,9 @@ class CountInApp {
         if (visualizationPanel) visualizationPanel.style.display = 'none';
         if (logContainer) logContainer.style.display = 'none';
 
+        // Adjust main-content to single column layout (no right sidebar)
+        mainContent.style.gridTemplateColumns = '1fr';
+
         // Start camera and show setup guide
         this.cameraSelector.show();
 
@@ -1742,6 +1745,7 @@ class CountInApp {
             const container = document.querySelector('.container');
             if (mainContent && container) {
                 mainContent.style.display = 'none';
+                mainContent.style.gridTemplateColumns = ''; // Restore default grid
                 container.appendChild(mainContent);
             }
 

@@ -1,6 +1,9 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, List
+from datetime import datetime
 import json
+from app.core.database import SessionLocal
+from app.models.camera_station import CameraStation
 
 router = APIRouter()
 
@@ -137,6 +140,18 @@ async def hub_websocket_endpoint(websocket: WebSocket, hub_id: int):
 async def camera_websocket_endpoint(websocket: WebSocket, camera_id: int):
     """WebSocket endpoint for camera stations to send count updates"""
     await hub_manager.connect_camera(websocket, camera_id)
+
+    # Mark camera as connected in database
+    db = SessionLocal()
+    try:
+        camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
+        if camera:
+            camera.is_connected = True
+            camera.last_heartbeat = datetime.utcnow()
+            db.commit()
+    finally:
+        db.close()
+
     try:
         while True:
             # Receive count events from camera
@@ -151,14 +166,42 @@ async def camera_websocket_endpoint(websocket: WebSocket, camera_id: int):
                     await hub_manager.broadcast_to_hub(hub_id, message)
 
             elif message.get("type") == "heartbeat":
+                # Update heartbeat timestamp in database
+                db = SessionLocal()
+                try:
+                    camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
+                    if camera:
+                        camera.last_heartbeat = datetime.utcnow()
+                        db.commit()
+                finally:
+                    db.close()
+
                 # Acknowledge heartbeat
                 await websocket.send_json({"type": "heartbeat_ack"})
 
     except WebSocketDisconnect:
         hub_manager.disconnect_camera(camera_id)
+        # Mark camera as disconnected in database
+        db = SessionLocal()
+        try:
+            camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
+            if camera:
+                camera.is_connected = False
+                db.commit()
+        finally:
+            db.close()
     except Exception as e:
         print(f"Camera WebSocket error: {e}")
         hub_manager.disconnect_camera(camera_id)
+        # Mark camera as disconnected in database
+        db = SessionLocal()
+        try:
+            camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
+            if camera:
+                camera.is_connected = False
+                db.commit()
+        finally:
+            db.close()
 
 
 # Helper function to broadcast hub updates

@@ -810,6 +810,99 @@ class CountInApp {
         }
     }
 
+    createLineItemElement(line, counts) {
+        const lineItem = document.createElement('div');
+        lineItem.className = 'line-item';
+
+        // Top row: color picker, name, delete
+        const topRow = document.createElement('div');
+        topRow.className = 'line-item-top';
+
+        // Color picker
+        const colorPicker = document.createElement('input');
+        colorPicker.type = 'color';
+        colorPicker.value = line.color;
+        colorPicker.className = 'line-color-picker';
+        colorPicker.title = 'Change line color';
+        colorPicker.addEventListener('change', (e) => {
+            line.color = e.target.value;
+            this.lineManager.redrawLines();
+            this.updateLineList(); // Update both lists
+            this.log(`Changed line color to: ${e.target.value}`, 'info');
+        });
+        topRow.appendChild(colorPicker);
+
+        // Editable line name input
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = line.name;
+        nameInput.className = 'line-name-input';
+        nameInput.addEventListener('change', (e) => {
+            this.lineManager.renameLine(line.id, e.target.value);
+            this.updateLineList(); // Update both lists
+            this.log(`Renamed line to: ${e.target.value}`, 'info');
+        });
+        topRow.appendChild(nameInput);
+
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'line-delete-btn';
+        deleteBtn.innerHTML = '×';
+        deleteBtn.title = 'Delete line';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Delete line "${line.name}"?`)) {
+                this.lineManager.removeLine(line.id);
+                this.updateLineList();
+            }
+        });
+        topRow.appendChild(deleteBtn);
+
+        lineItem.appendChild(topRow);
+
+        // Bottom row: counts and direction toggle
+        const bottomRow = document.createElement('div');
+        bottomRow.className = 'line-item-bottom';
+
+        const countDisplay = document.createElement('div');
+        countDisplay.className = 'line-counts';
+
+        const inCount = document.createElement('span');
+        inCount.className = 'line-count in';
+        inCount.textContent = `↓${counts.in}`;
+        inCount.title = `In: ${counts.in}`;
+        countDisplay.appendChild(inCount);
+
+        const outCount = document.createElement('span');
+        outCount.className = 'line-count out';
+        outCount.textContent = `↑${counts.out}`;
+        outCount.title = `Out: ${counts.out}`;
+        countDisplay.appendChild(outCount);
+
+        bottomRow.appendChild(countDisplay);
+
+        // Direction toggle button
+        const directionBtn = document.createElement('button');
+        directionBtn.className = 'line-direction-btn';
+        directionBtn.innerHTML = '⇄';
+        directionBtn.title = 'Swap in/out direction';
+        directionBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Swap the line direction by flipping start and end
+            const temp = { ...line.start };
+            line.start = { ...line.end };
+            line.end = temp;
+            this.lineManager.redrawLines();
+            this.updateLineList(); // Update both lists
+            this.log(`Reversed direction for line: ${line.name}`, 'info');
+        });
+        bottomRow.appendChild(directionBtn);
+
+        lineItem.appendChild(bottomRow);
+
+        return lineItem;
+    }
+
     updateLineList() {
         const lines = this.lineManager.getLines();
         const lineCrossings = this.lineManager.getLineCrossings();
@@ -824,97 +917,14 @@ class CountInApp {
         this.lineListCameraEl.innerHTML = '';
 
         for (const line of lines) {
-            const lineItem = document.createElement('div');
-            lineItem.className = 'line-item';
-
             const counts = lineCrossings[line.id] || { in: 0, out: 0 };
 
-            // Top row: color picker, name, delete
-            const topRow = document.createElement('div');
-            topRow.className = 'line-item-top';
+            // Create separate elements for each list with proper event listeners
+            const lineItemStandalone = this.createLineItemElement(line, counts);
+            const lineItemCamera = this.createLineItemElement(line, counts);
 
-            // Color picker
-            const colorPicker = document.createElement('input');
-            colorPicker.type = 'color';
-            colorPicker.value = line.color;
-            colorPicker.className = 'line-color-picker';
-            colorPicker.title = 'Change line color';
-            colorPicker.addEventListener('change', (e) => {
-                line.color = e.target.value;
-                this.lineManager.redrawLines();
-                this.log(`Changed line color to: ${e.target.value}`, 'info');
-            });
-            topRow.appendChild(colorPicker);
-
-            // Editable line name input
-            const nameInput = document.createElement('input');
-            nameInput.type = 'text';
-            nameInput.value = line.name;
-            nameInput.className = 'line-name-input';
-            nameInput.addEventListener('change', (e) => {
-                this.lineManager.renameLine(line.id, e.target.value);
-                this.log(`Renamed line to: ${e.target.value}`, 'info');
-            });
-            topRow.appendChild(nameInput);
-
-            // Delete button
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'line-delete-btn';
-            deleteBtn.innerHTML = '×';
-            deleteBtn.title = 'Delete line';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (confirm(`Delete line "${line.name}"?`)) {
-                    this.lineManager.removeLine(line.id);
-                    this.updateLineList();
-                }
-            });
-            topRow.appendChild(deleteBtn);
-
-            lineItem.appendChild(topRow);
-
-            // Bottom row: counts and direction toggle
-            const bottomRow = document.createElement('div');
-            bottomRow.className = 'line-item-bottom';
-
-            const countDisplay = document.createElement('div');
-            countDisplay.className = 'line-counts';
-
-            const inCount = document.createElement('span');
-            inCount.className = 'line-count in';
-            inCount.textContent = `↓${counts.in}`;
-            inCount.title = `In: ${counts.in}`;
-            countDisplay.appendChild(inCount);
-
-            const outCount = document.createElement('span');
-            outCount.className = 'line-count out';
-            outCount.textContent = `↑${counts.out}`;
-            outCount.title = `Out: ${counts.out}`;
-            countDisplay.appendChild(outCount);
-
-            bottomRow.appendChild(countDisplay);
-
-            // Direction toggle button
-            const directionBtn = document.createElement('button');
-            directionBtn.className = 'line-direction-btn';
-            directionBtn.innerHTML = '⇄';
-            directionBtn.title = 'Swap in/out direction';
-            directionBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Swap the line direction by flipping start and end
-                const temp = { ...line.start };
-                line.start = { ...line.end };
-                line.end = temp;
-                this.lineManager.redrawLines();
-                this.log(`Reversed direction for line: ${line.name}`, 'info');
-            });
-            bottomRow.appendChild(directionBtn);
-
-            lineItem.appendChild(bottomRow);
-
-            // Append to both standalone and camera line lists
-            this.lineListEl.appendChild(lineItem);
-            this.lineListCameraEl.appendChild(lineItem.cloneNode(true));
+            this.lineListEl.appendChild(lineItemStandalone);
+            this.lineListCameraEl.appendChild(lineItemCamera);
         }
     }
 

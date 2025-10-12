@@ -343,10 +343,15 @@ export class LineManager {
                 }
 
                 // Determine crossing direction
-                const direction = this.determineLineCrossingDirection(
+                let direction = this.determineLineCrossingDirection(
                     scaledPrevPos, scaledCurrentPos,
                     lineStart, lineEnd
                 );
+
+                // Invert direction if video is mirrored
+                if (this.isVideoMirrored()) {
+                    direction = direction === 'in' ? 'out' : 'in';
+                }
 
                 // Update count for this line
                 if (!this.lineCrossings[line.id]) {
@@ -704,6 +709,20 @@ export class LineManager {
     }
 
     /**
+     * Adjust mouse coordinates for mirrored canvas
+     * @param {number} x - Original x coordinate
+     * @param {number} y - Original y coordinate
+     * @returns {Object} Adjusted coordinates {x, y}
+     */
+    adjustForMirroring(x, y) {
+        if (this.isVideoMirrored()) {
+            // When canvas is CSS-mirrored, flip the x coordinate
+            return { x: this.canvas.width - x, y };
+        }
+        return { x, y };
+    }
+
+    /**
      * Draw text on canvas, handling mirroring
      * @param {string} text - Text to draw
      * @param {number} x - X coordinate
@@ -966,8 +985,13 @@ export class LineManager {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
-        const x = (event.clientX - rect.left) * scaleX;
-        const y = (event.clientY - rect.top) * scaleY;
+        let x = (event.clientX - rect.left) * scaleX;
+        let y = (event.clientY - rect.top) * scaleY;
+
+        // Adjust for mirroring
+        const adjusted = this.adjustForMirroring(x, y);
+        x = adjusted.x;
+        y = adjusted.y;
 
         console.log('Mouse down at', x, y, 'Scale:', scaleX, scaleY);
 
@@ -1022,8 +1046,13 @@ export class LineManager {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
-        const x = (event.clientX - rect.left) * scaleX;
-        const y = (event.clientY - rect.top) * scaleY;
+        let x = (event.clientX - rect.left) * scaleX;
+        let y = (event.clientY - rect.top) * scaleY;
+
+        // Adjust for mirroring
+        const adjusted = this.adjustForMirroring(x, y);
+        x = adjusted.x;
+        y = adjusted.y;
 
         // Line mode: update end point while dragging
         if (this.isDrawing && this.drawingLine) {
@@ -1050,8 +1079,13 @@ export class LineManager {
         const rect = this.canvas.getBoundingClientRect();
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
-        const x = (event.clientX - rect.left) * scaleX;
-        const y = (event.clientY - rect.top) * scaleY;
+        let x = (event.clientX - rect.left) * scaleX;
+        let y = (event.clientY - rect.top) * scaleY;
+
+        // Adjust for mirroring
+        const adjusted = this.adjustForMirroring(x, y);
+        x = adjusted.x;
+        y = adjusted.y;
 
         console.log('Mouse up at', x, y, 'Scale:', scaleX, scaleY);
 

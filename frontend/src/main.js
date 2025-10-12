@@ -30,7 +30,6 @@ class CountInApp {
         this.currentModeEl = document.getElementById('current-mode');
 
         // Line controls
-        this.clearLinesBtn = document.getElementById('clear-lines-btn');
         this.lineListEl = document.getElementById('line-list');
         this.lineModeBtn = document.getElementById('line-mode-btn');
         this.areaModeBtn = document.getElementById('area-mode-btn');
@@ -462,9 +461,6 @@ class CountInApp {
         this.setupModeBtn.addEventListener('click', () => this.setMode('setup'));
         this.countingModeBtn.addEventListener('click', () => this.setMode('counting'));
 
-        // Line controls
-        this.clearLinesBtn.addEventListener('click', () => this.lineManager.clearLines());
-
         // Drawing mode buttons (in settings modal)
         this.lineModeBtn.addEventListener('click', () => this.setDrawingMode('line'));
         this.areaModeBtn.addEventListener('click', () => this.setDrawingMode('area'));
@@ -821,20 +817,6 @@ class CountInApp {
                 this.log(`Renamed line to: ${e.target.value}`, 'info');
             });
             topRow.appendChild(nameInput);
-
-            // Delete button
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'line-delete-btn';
-            deleteBtn.innerHTML = '×';
-            deleteBtn.title = 'Delete line';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (confirm(`Delete line "${line.name}"?`)) {
-                    this.lineManager.removeLine(line.id);
-                    this.updateLineList();
-                }
-            });
-            topRow.appendChild(deleteBtn);
 
             lineItem.appendChild(topRow);
 

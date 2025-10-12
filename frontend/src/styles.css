@@ -1552,6 +1552,12 @@ body.drawing-active #line-canvas {
     display: grid;
     grid-template-columns: 360px 1fr;
     min-height: 100vh;
+    position: relative;
+    transition: grid-template-columns 0.3s ease;
+}
+
+.camera-view.sidebar-hidden .camera-connected-main {
+    grid-template-columns: 0 1fr;
 }
 
 .camera-sidebar {
@@ -1562,11 +1568,11 @@ body.drawing-active #line-canvas {
     flex-direction: column;
     gap: 2rem;
     position: relative;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+    transition: opacity 0.3s ease;
 }
 
 .camera-view.sidebar-hidden .camera-sidebar {
-    transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
 }
@@ -1582,22 +1588,20 @@ body.drawing-active #line-canvas {
 .sidebar-toggle-camera {
     position: absolute;
     top: 1rem;
-    right: 1rem;
-    z-index: 10;
-    padding: 0.5rem;
+    left: 320px;
+    z-index: 1000;
+    padding: 0.5rem 0.75rem;
     min-width: auto;
     background: var(--primary-color);
     color: white;
     cursor: pointer;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    transition: left 0.3s ease;
 }
 
 .camera-view.sidebar-hidden .sidebar-toggle-camera {
-    position: fixed;
     left: 1rem;
-    right: auto;
-    transform: translateX(0);
-    opacity: 1;
-    pointer-events: auto;
 }
 
 .camera-pairing {

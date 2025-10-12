@@ -1207,10 +1207,6 @@ class CountInApp {
 
             if (message.type === 'count_update') {
                 this.handleCameraCountUpdate(message);
-            } else if (message.type === 'camera_connected') {
-                this.log(`Camera "${message.camera.name}" connected`, 'success');
-                // Refresh camera list
-                this.pollHubStats();
             }
         };
 

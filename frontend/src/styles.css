@@ -1547,13 +1547,39 @@ body.drawing-active #line-canvas {
     padding: 0;
 }
 
-.camera-view.sidebar-hidden #camera-connected {
+/* Camera connected main layout */
+.camera-connected-main {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    min-height: 100vh;
+}
+
+.camera-sidebar {
+    background: var(--bg-color);
+    border-right: 1px solid var(--border-color);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    position: relative;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.camera-view.sidebar-hidden .camera-sidebar {
     transform: translateX(-100%);
     opacity: 0;
     pointer-events: none;
 }
 
-.sidebar-toggle {
+.camera-video-area {
+    position: relative;
+    background: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-toggle-camera {
     position: absolute;
     top: 1rem;
     right: 1rem;
@@ -1562,11 +1588,16 @@ body.drawing-active #line-canvas {
     min-width: auto;
     background: var(--primary-color);
     color: white;
+    cursor: pointer;
 }
 
-.camera-view.sidebar-hidden .sidebar-toggle {
-    right: auto;
+.camera-view.sidebar-hidden .sidebar-toggle-camera {
+    position: fixed;
     left: 1rem;
+    right: auto;
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .camera-pairing {
@@ -1605,11 +1636,24 @@ body.drawing-active #line-canvas {
     margin-top: 1.5rem;
 }
 
-.camera-connected {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 3rem 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+.camera-info-display h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.camera-info-display p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.camera-note {
+    padding: 1rem;
+    background: var(--surface-color);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: auto;
 }
 
 .connection-status {

@@ -1601,9 +1601,10 @@ class CountInApp {
         const cameraPairing = document.getElementById('camera-pairing');
         const cameraConnected = document.getElementById('camera-connected');
         const mainContent = document.querySelector('.main-content');
+        const cameraVideoArea = document.querySelector('.camera-video-area');
 
         cameraPairing.style.display = 'none';
-        cameraConnected.style.display = 'block';
+        cameraConnected.style.display = 'grid';
 
         // Update display
         document.getElementById('camera-display-name').textContent = this.cameraStation.name;
@@ -1612,8 +1613,17 @@ class CountInApp {
         // Connect WebSocket
         this.connectCameraWebSocket();
 
-        // Show main content (video area) for camera selection
+        // Move main content (video area) into camera video area
         mainContent.style.display = 'grid';
+        cameraVideoArea.appendChild(mainContent);
+
+        // Hide dashboard panel, visualization, and logs (not needed in camera mode)
+        const dashboardPanel = document.querySelector('.dashboard-panel');
+        const visualizationPanel = document.querySelector('.visualization-panel');
+        const logContainer = document.querySelector('.log-container');
+        if (dashboardPanel) dashboardPanel.style.display = 'none';
+        if (visualizationPanel) visualizationPanel.style.display = 'none';
+        if (logContainer) logContainer.style.display = 'none';
 
         // Start camera and show setup guide
         this.cameraSelector.show();
@@ -1642,10 +1652,12 @@ class CountInApp {
             this.counts.total = this.counts.in + this.counts.out;
 
             // Update display with error handling
+            const totalEl = document.getElementById('camera-total-count');
             const inEl = document.getElementById('camera-total-in');
             const outEl = document.getElementById('camera-total-out');
 
-            if (inEl && outEl) {
+            if (totalEl && inEl && outEl) {
+                totalEl.textContent = this.counts.total;
                 inEl.textContent = this.counts.in;
                 outEl.textContent = this.counts.out;
             } else {
@@ -1724,6 +1736,22 @@ class CountInApp {
             // Reset state
             this.cameraStation = null;
             this.hubId = null;
+
+            // Move main-content back to container
+            const mainContent = document.querySelector('.main-content');
+            const container = document.querySelector('.container');
+            if (mainContent && container) {
+                mainContent.style.display = 'none';
+                container.appendChild(mainContent);
+            }
+
+            // Restore dashboard panel, visualization, and logs
+            const dashboardPanel = document.querySelector('.dashboard-panel');
+            const visualizationPanel = document.querySelector('.visualization-panel');
+            const logContainer = document.querySelector('.log-container');
+            if (dashboardPanel) dashboardPanel.style.display = '';
+            if (visualizationPanel) visualizationPanel.style.display = '';
+            if (logContainer) logContainer.style.display = '';
 
             // Clear localStorage
             localStorage.removeItem('countin-camera-station-id');

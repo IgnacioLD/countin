@@ -183,13 +183,6 @@
                         <div class="empty-state">No lines added yet</div>
                     </div>
                 </div>
-
-                <div class="session-controls">
-                    <h3>Session</h3>
-                    <input type="text" id="session-name" placeholder="Session name" class="input" />
-                    <button id="save-session-btn" class="btn btn-full">Save Session</button>
-                    <button id="export-data-btn" class="btn btn-full">Export Data</button>
-                </div>
             </div>
         </div>
 
@@ -290,38 +283,53 @@
                 </div>
             </div>
 
-            <!-- Connected Screen -->
-            <div id="camera-connected" class="camera-connected" style="display: none;">
-                <button id="toggle-camera-sidebar" class="btn btn-icon sidebar-toggle" title="Hide sidebar">
-                    <span class="toggle-icon">&lt;</span>
-                </button>
+            <!-- Connected Screen with Video + Sidebar -->
+            <div id="camera-connected" class="camera-connected-main" style="display: none;">
+                <!-- Camera Sidebar -->
+                <div class="camera-sidebar">
+                    <button id="toggle-camera-sidebar" class="btn btn-icon sidebar-toggle-camera" title="Hide sidebar">
+                        <span class="toggle-icon">&lt;</span>
+                    </button>
 
-                <div class="connection-status connected">
-                    <span class="status-dot"></span>
-                    <span>Connected to Hub</span>
-                </div>
-
-                <div class="camera-info-display">
-                    <h3 id="camera-display-name">Camera Station</h3>
-                    <p id="camera-display-location"></p>
-                </div>
-
-                <div class="camera-stats">
-                    <div class="stat-box">
-                        <div class="stat-value" id="camera-total-in">0</div>
-                        <div class="stat-label">In</div>
+                    <div class="connection-status connected">
+                        <span class="status-dot"></span>
+                        <span>Connected to Hub</span>
                     </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="camera-total-out">0</div>
-                        <div class="stat-label">Out</div>
+
+                    <div class="camera-info-display">
+                        <h3 id="camera-display-name">Camera Station</h3>
+                        <p id="camera-display-location"></p>
                     </div>
+
+                    <div class="counting-stats">
+                        <h3>Live Statistics</h3>
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-value" id="camera-total-count">0</div>
+                                <div class="stat-label">Total</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value" id="camera-total-in">0</div>
+                                <div class="stat-label">In</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-value" id="camera-total-out">0</div>
+                                <div class="stat-label">Out</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="camera-note">
+                        <p>Counts are sent to hub in real-time</p>
+                    </div>
+
+                    <button id="disconnect-camera-btn" class="btn btn-danger btn-full">Disconnect</button>
                 </div>
 
-                <div class="camera-note">
-                    <p>This camera is sending count data only. No video is transmitted.</p>
+                <!-- Camera Video Area -->
+                <div class="camera-video-area">
+                    <!-- Video content will be moved here when camera starts -->
                 </div>
-
-                <button id="disconnect-camera-btn" class="btn btn-secondary btn-full">Disconnect</button>
             </div>
         </div>
 

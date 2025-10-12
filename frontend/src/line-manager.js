@@ -696,6 +696,43 @@ export class LineManager {
     }
 
     /**
+     * Check if video is mirrored
+     * @returns {boolean} True if video is mirrored
+     */
+    isVideoMirrored() {
+        return this.videoElement.classList.contains('mirrored');
+    }
+
+    /**
+     * Draw text on canvas, handling mirroring
+     * @param {string} text - Text to draw
+     * @param {number} x - X coordinate
+     * @param {number} y - Y coordinate
+     * @param {string} color - Text color
+     */
+    drawText(text, x, y, color) {
+        const ctx = this.ctx;
+        const isMirrored = this.isVideoMirrored();
+
+        ctx.save();
+
+        if (isMirrored) {
+            // Undo the canvas mirroring for text only
+            ctx.translate(x, 0);
+            ctx.scale(-1, 1);
+            ctx.translate(-x, 0);
+        }
+
+        ctx.font = '14px Arial';
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, y);
+
+        ctx.restore();
+    }
+
+    /**
      * Draw a single line on the canvas
      * @param {Object} line - Line object to draw
      * @param {boolean} isDrawing - Whether this is a line being drawn
@@ -744,6 +781,7 @@ export class LineManager {
                 centerX /= points.length;
                 centerY /= points.length;
 
+                // Draw background for text
                 ctx.font = '14px Arial';
                 const textMetrics = ctx.measureText(line.name);
                 const textWidth = textMetrics.width;
@@ -757,10 +795,8 @@ export class LineManager {
                     textHeight + 10
                 );
 
-                ctx.fillStyle = color;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(line.name, centerX, centerY);
+                // Draw text with mirror handling
+                this.drawText(line.name, centerX, centerY, color);
             }
         } else if (type === 'area') {
             // Rectangle area (backwards compatibility)
@@ -794,12 +830,11 @@ export class LineManager {
 
             // Add label if not actively drawing
             if (!isDrawing) {
-                this.ctx.font = '14px Arial';
-                this.ctx.fillStyle = color;
-
                 const midX = x + width / 2;
                 const midY = y + height / 2;
 
+                // Draw background for text
+                this.ctx.font = '14px Arial';
                 const textMetrics = this.ctx.measureText(line.name);
                 const textWidth = textMetrics.width;
                 const textHeight = 14;
@@ -812,10 +847,8 @@ export class LineManager {
                     textHeight + 10
                 );
 
-                this.ctx.fillStyle = color;
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText(line.name, midX, midY);
+                // Draw text with mirror handling
+                this.drawText(line.name, midX, midY, color);
             }
         } else {
             // Draw a line (original behavior)
@@ -840,32 +873,26 @@ export class LineManager {
 
             // If not actively drawing, add a label
             if (!isDrawing) {
-                // Draw line name
-                this.ctx.font = '14px Arial';
-                this.ctx.fillStyle = color;
-
                 // Position the text in the middle of the line
                 const midX = (start.x + end.x) / 2;
                 const midY = (start.y + end.y) / 2;
 
-                // Add a white background for better visibility
+                // Draw background for text
+                this.ctx.font = '14px Arial';
                 const textMetrics = this.ctx.measureText(line.name);
                 const textWidth = textMetrics.width;
-                const textHeight = 14; // Approximate height for standard font
+                const textHeight = 14;
 
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 this.ctx.fillRect(
                     midX - textWidth / 2 - 5,
                     midY - textHeight / 2 - 5,
-                textWidth + 10,
-                textHeight + 10
-            );
+                    textWidth + 10,
+                    textHeight + 10
+                );
 
-                // Draw the text
-                this.ctx.fillStyle = color;
-                this.ctx.textAlign = 'center';
-                this.ctx.textBaseline = 'middle';
-                this.ctx.fillText(line.name, midX, midY);
+                // Draw text with mirror handling
+                this.drawText(line.name, midX, midY, color);
 
                 // Draw direction indicators
                 this.drawDirectionIndicator(line);

@@ -1641,9 +1641,16 @@ class CountInApp {
             this.counts[event.direction]++;
             this.counts.total = this.counts.in + this.counts.out;
 
-            // Update display
-            document.getElementById('camera-total-in').textContent = this.counts.in;
-            document.getElementById('camera-total-out').textContent = this.counts.out;
+            // Update display with error handling
+            const inEl = document.getElementById('camera-total-in');
+            const outEl = document.getElementById('camera-total-out');
+
+            if (inEl && outEl) {
+                inEl.textContent = this.counts.in;
+                outEl.textContent = this.counts.out;
+            } else {
+                console.warn('Camera count display elements not found');
+            }
 
             // Send to hub via WebSocket
             if (this.cameraWebSocket && this.cameraWebSocket.readyState === WebSocket.OPEN) {

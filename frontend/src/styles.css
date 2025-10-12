@@ -291,6 +291,12 @@ header h1 {
     transform: scaleX(-1);
 }
 
+/* Mirror canvases when video is mirrored */
+#video.mirrored ~ #detection-canvas,
+#video.mirrored ~ #line-canvas {
+    transform: scaleX(-1);
+}
+
 #detection-canvas,
 #line-canvas {
     position: absolute;

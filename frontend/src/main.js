@@ -504,9 +504,13 @@ class CountInApp {
             }
         });
 
-        // Session controls
-        this.saveSessionBtn.addEventListener('click', () => this.saveSession());
-        this.exportDataBtn.addEventListener('click', () => this.exportData());
+        // Session controls (only if they exist)
+        if (this.saveSessionBtn) {
+            this.saveSessionBtn.addEventListener('click', () => this.saveSession());
+        }
+        if (this.exportDataBtn) {
+            this.exportDataBtn.addEventListener('click', () => this.exportData());
+        }
 
         // Logo click to go to home
         const logoLink = document.getElementById('logo-link');
@@ -701,7 +705,7 @@ class CountInApp {
         // Try to create session (but don't let it block detection)
         try {
             if (!this.currentSession) {
-                const sessionName = this.sessionNameInput.value || `Session ${new Date().toLocaleString()}`;
+                const sessionName = this.sessionNameInput?.value || `Session ${new Date().toLocaleString()}`;
                 this.currentSession = await apiService.createSession(sessionName);
                 this.log(`Session created: ${sessionName}`, 'success');
             }
@@ -896,7 +900,9 @@ class CountInApp {
 
             // Reset for new session
             this.currentSession = null;
-            this.sessionNameInput.value = '';
+            if (this.sessionNameInput) {
+                this.sessionNameInput.value = '';
+            }
         } catch (error) {
             this.log('Failed to save session: ' + error.message, 'error');
         }

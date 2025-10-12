@@ -1590,14 +1590,25 @@ body.drawing-active #line-canvas {
     top: 1rem;
     left: 320px;
     z-index: 1000;
-    padding: 0.5rem 0.75rem;
-    min-width: auto;
-    background: var(--primary-color);
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 102, 204, 0.9);
     color: white;
     cursor: pointer;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-md);
-    transition: left 0.3s ease;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: left 0.3s ease, background 0.2s ease;
+    border: 2px solid white;
+    font-size: 14px;
+}
+
+.sidebar-toggle-camera:hover {
+    background: rgba(0, 102, 204, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .camera-view.sidebar-hidden .sidebar-toggle-camera {

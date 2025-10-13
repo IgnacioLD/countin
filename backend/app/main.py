@@ -37,7 +37,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_origin_regex=r"https://.*\.countin\.ignacio\.tech"
+    allow_origin_regex=r"https://([a-zA-Z0-9-]+\.)?countin\.ignacio\.tech"
 )
 
 # Include API routes

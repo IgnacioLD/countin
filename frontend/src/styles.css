@@ -2098,7 +2098,7 @@ body.drawing-active #line-canvas {
 
     /* Camera sidebar mobile */
     .camera-connected-main {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important; /* Force single column on mobile */
         min-height: 100vh;
     }
 
@@ -2116,6 +2116,11 @@ body.drawing-active #line-canvas {
 
     .camera-view.sidebar-hidden .camera-sidebar {
         transform: translateX(-100%);
+    }
+
+    /* Override desktop grid change on mobile - always single column */
+    .camera-view.sidebar-hidden .camera-connected-main {
+        grid-template-columns: 1fr !important;
     }
 
     .sidebar-toggle-camera {

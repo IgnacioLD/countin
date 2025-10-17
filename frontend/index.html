@@ -6,136 +6,28 @@
     <title>CountIn - Real-Time Occupancy Tracker</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/src/styles.css">
-    <!-- TensorFlow.js and COCO-SSD loaded dynamically when needed -->
 </head>
 <body>
+    <!-- Fixed Header (at root level for clean structure) -->
+    <header>
+        <div class="header-left">
+            <div id="logo-link" style="cursor: pointer; display: flex; align-items: center;">
+                <img src="/logo.svg" alt="CountIn Logo" style="height: 40px; width: auto;">
+            </div>
+            <span class="tagline-header">Privacy-focused people counting</span>
+        </div>
+        <div class="header-controls">
+            <div class="mode-indicator">
+                <span class="mode-label">Mode:</span>
+                <span id="current-mode" class="mode-value">Setup</span>
+            </div>
+            <button id="settings-btn" class="btn btn-secondary">⚙️ Settings</button>
+        </div>
+    </header>
+
+    <!-- Main Container (flows below header) -->
     <div class="container">
-        <header>
-            <div class="header-left">
-                <div id="logo-link" style="cursor: pointer; display: flex; align-items: center;">
-                    <img src="/logo.svg" alt="CountIn Logo" style="height: 40px; width: auto;">
-                </div>
-                <span class="tagline-header">Privacy-focused people counting</span>
-            </div>
-            <div class="header-controls">
-                <div class="mode-indicator">
-                    <span class="mode-label">Mode:</span>
-                    <span id="current-mode" class="mode-value">Setup</span>
-                </div>
-                <button id="settings-btn" class="btn btn-secondary">⚙️ Settings</button>
-            </div>
-        </header>
-
-        <!-- AI Model Loading Modal -->
-        <div id="model-loading-modal" class="modal">
-            <div class="modal-content loading-content">
-                <div class="loading-spinner"></div>
-                <h3>Loading AI Model</h3>
-                <p id="loading-status">Downloading detection model...</p>
-                <div class="loading-bar">
-                    <div class="loading-bar-fill" id="loading-progress"></div>
-                </div>
-                <p class="loading-info">This may take a minute on first load</p>
-            </div>
-        </div>
-
-        <!-- Onboarding Flow -->
-        <div id="onboarding-modal" class="modal active">
-            <div class="modal-content onboarding-content">
-                <!-- Step 1: Welcome -->
-                <div class="onboarding-step active" data-step="1">
-                    <div class="welcome-header">
-                        <h1>CountIn</h1>
-                        <p class="tagline">Privacy-focused people counting</p>
-                    </div>
-                    <button class="btn btn-primary btn-large" onclick="window.countInApp.nextOnboardingStep()">Start Setup</button>
-                </div>
-
-                <!-- Step 2: Choose Mode -->
-                <div class="onboarding-step" data-step="2">
-                    <h2>Choose Your Mode</h2>
-                    <p class="mode-description">How would you like to use CountIn?</p>
-
-                    <div class="mode-selection">
-                        <button class="mode-card" onclick="window.countInApp.selectMode('standalone')">
-                            <div class="mode-icon">📊</div>
-                            <h3>Standalone</h3>
-                            <p>Single camera counting</p>
-                            <span class="mode-tag">Quick Start</span>
-                        </button>
-
-                        <button class="mode-card" onclick="window.countInApp.selectMode('hub')">
-                            <div class="mode-icon">🎯</div>
-                            <h3>Hub Dashboard</h3>
-                            <p>Monitor multiple cameras</p>
-                            <span class="mode-tag">Multi-Location</span>
-                        </button>
-
-                        <button class="mode-card" onclick="window.countInApp.selectMode('camera')">
-                            <div class="mode-icon">📱</div>
-                            <h3>Camera Station</h3>
-                            <p>Connect to a hub</p>
-                            <span class="mode-tag">Privacy First</span>
-                        </button>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <!-- Camera Selector Modal -->
-        <div id="camera-modal" class="modal">
-            <div class="modal-content">
-                <h3>Select Camera</h3>
-                <div id="camera-list" class="camera-list"></div>
-                <button id="camera-confirm-btn" class="btn btn-primary">Start Camera</button>
-            </div>
-        </div>
-
-        <!-- Settings Modal -->
-        <div id="settings-modal" class="modal">
-            <div class="modal-content settings-content">
-                <h2>Settings</h2>
-
-                <div class="settings-section">
-                    <h3>Application Mode</h3>
-                    <div class="current-mode-display">
-                        <span id="current-app-mode">Standalone</span>
-                    </div>
-                    <button id="change-mode-btn" class="btn btn-full">Change Mode</button>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Camera</h3>
-                    <button id="change-camera-btn-modal" class="btn btn-full">Change Camera</button>
-                    <div id="camera-info-modal" class="camera-info"></div>
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="mirror-video-checkbox">
-                        <span>Mirror Video</span>
-                    </label>
-                </div>
-
-                <div class="settings-section" id="counting-mode-section">
-                    <h3>Counting Mode</h3>
-                    <div class="mode-toggle">
-                        <button id="setup-mode-btn" class="btn btn-mode active">Setup</button>
-                        <button id="counting-mode-btn" class="btn btn-mode">Counting</button>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h3>Drawing Tools</h3>
-                    <div class="drawing-mode-toggle">
-                        <button id="line-mode-btn" class="btn btn-mode-select active">Line</button>
-                        <button id="area-mode-btn" class="btn btn-mode-select">Area</button>
-                    </div>
-                    <button id="clear-lines-btn" class="btn btn-full">Clear All Lines</button>
-                </div>
-
-                <button id="close-settings-btn" class="btn btn-primary btn-large">Close</button>
-            </div>
-        </div>
-
+        <!-- Standalone Counting View -->
         <div class="main-content">
             <div class="video-container">
                 <video id="video" autoplay muted playsinline></video>
@@ -251,34 +143,6 @@
             </div>
         </div>
 
-        <!-- Camera Detail Modal -->
-        <div id="camera-detail-modal" class="modal">
-            <div class="modal-content camera-detail-content">
-                <h2 id="camera-detail-name">Camera Details</h2>
-                <button id="close-camera-detail" class="btn btn-icon close-modal-btn">×</button>
-
-                <div class="camera-detail-stats">
-                    <div class="stat-box">
-                        <div class="stat-value" id="camera-detail-in">0</div>
-                        <div class="stat-label">In</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="camera-detail-out">0</div>
-                        <div class="stat-label">Out</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-value" id="camera-detail-total">0</div>
-                        <div class="stat-label">Total</div>
-                    </div>
-                </div>
-
-                <div class="camera-detail-chart">
-                    <h3>Count History</h3>
-                    <canvas id="camera-detail-chart"></canvas>
-                </div>
-            </div>
-        </div>
-
         <!-- Camera Station View -->
         <div id="camera-view" class="camera-view" style="display: none;">
             <!-- Pairing Screen -->
@@ -361,20 +225,157 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- QR Code Modal -->
-        <div id="qr-modal" class="modal">
-            <div class="modal-content qr-content">
-                <h2>Scan to Connect Camera</h2>
-                <div id="qr-code-display"></div>
-                <div class="qr-info">
-                    <p>Pairing Code: <strong id="qr-pairing-code">------</strong></p>
-                    <p class="qr-instructions">Scan this QR code with your camera device or enter the code manually</p>
+    <!-- Modals (at root level for proper overlay) -->
+    <!-- AI Model Loading Modal -->
+    <div id="model-loading-modal" class="modal">
+        <div class="modal-content loading-content">
+            <div class="loading-spinner"></div>
+            <h3>Loading AI Model</h3>
+            <p id="loading-status">Downloading detection model...</p>
+            <div class="loading-bar">
+                <div class="loading-bar-fill" id="loading-progress"></div>
+            </div>
+            <p class="loading-info">This may take a minute on first load</p>
+        </div>
+    </div>
+
+    <!-- Onboarding Flow -->
+    <div id="onboarding-modal" class="modal active">
+        <div class="modal-content onboarding-content">
+            <!-- Step 1: Welcome -->
+            <div class="onboarding-step active" data-step="1">
+                <div class="welcome-header">
+                    <h1>CountIn</h1>
+                    <p class="tagline">Privacy-focused people counting</p>
                 </div>
-                <button id="close-qr-btn" class="btn btn-primary">Close</button>
+                <button class="btn btn-primary btn-large" onclick="window.countInApp.nextOnboardingStep()">Start Setup</button>
+            </div>
+
+            <!-- Step 2: Choose Mode -->
+            <div class="onboarding-step" data-step="2">
+                <h2>Choose Your Mode</h2>
+                <p class="mode-description">How would you like to use CountIn?</p>
+
+                <div class="mode-selection">
+                    <button class="mode-card" onclick="window.countInApp.selectMode('standalone')">
+                        <div class="mode-icon">📊</div>
+                        <h3>Standalone</h3>
+                        <p>Single camera counting</p>
+                        <span class="mode-tag">Quick Start</span>
+                    </button>
+
+                    <button class="mode-card" onclick="window.countInApp.selectMode('hub')">
+                        <div class="mode-icon">🎯</div>
+                        <h3>Hub Dashboard</h3>
+                        <p>Monitor multiple cameras</p>
+                        <span class="mode-tag">Multi-Location</span>
+                    </button>
+
+                    <button class="mode-card" onclick="window.countInApp.selectMode('camera')">
+                        <div class="mode-icon">📱</div>
+                        <h3>Camera Station</h3>
+                        <p>Connect to a hub</p>
+                        <span class="mode-tag">Privacy First</span>
+                    </button>
+                </div>
             </div>
         </div>
+    </div>
 
+    <!-- Camera Selector Modal -->
+    <div id="camera-modal" class="modal">
+        <div class="modal-content">
+            <h3>Select Camera</h3>
+            <div id="camera-list" class="camera-list"></div>
+            <button id="camera-confirm-btn" class="btn btn-primary">Start Camera</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content settings-content">
+            <h2>Settings</h2>
+
+            <div class="settings-section">
+                <h3>Application Mode</h3>
+                <div class="current-mode-display">
+                    <span id="current-app-mode">Standalone</span>
+                </div>
+                <button id="change-mode-btn" class="btn btn-full">Change Mode</button>
+            </div>
+
+            <div class="settings-section">
+                <h3>Camera</h3>
+                <button id="change-camera-btn-modal" class="btn btn-full">Change Camera</button>
+                <div id="camera-info-modal" class="camera-info"></div>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="mirror-video-checkbox">
+                    <span>Mirror Video</span>
+                </label>
+            </div>
+
+            <div class="settings-section" id="counting-mode-section">
+                <h3>Counting Mode</h3>
+                <div class="mode-toggle">
+                    <button id="setup-mode-btn" class="btn btn-mode active">Setup</button>
+                    <button id="counting-mode-btn" class="btn btn-mode">Counting</button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <h3>Drawing Tools</h3>
+                <div class="drawing-mode-toggle">
+                    <button id="line-mode-btn" class="btn btn-mode-select active">Line</button>
+                    <button id="area-mode-btn" class="btn btn-mode-select">Area</button>
+                </div>
+                <button id="clear-lines-btn" class="btn btn-full">Clear All Lines</button>
+            </div>
+
+            <button id="close-settings-btn" class="btn btn-primary btn-large">Close</button>
+        </div>
+    </div>
+
+    <!-- Camera Detail Modal -->
+    <div id="camera-detail-modal" class="modal">
+        <div class="modal-content camera-detail-content">
+            <h2 id="camera-detail-name">Camera Details</h2>
+            <button id="close-camera-detail" class="btn btn-icon close-modal-btn">×</button>
+
+            <div class="camera-detail-stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="camera-detail-in">0</div>
+                    <div class="stat-label">In</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="camera-detail-out">0</div>
+                    <div class="stat-label">Out</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="camera-detail-total">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+            </div>
+
+            <div class="camera-detail-chart">
+                <h3>Count History</h3>
+                <canvas id="camera-detail-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div id="qr-modal" class="modal">
+        <div class="modal-content qr-content">
+            <h2>Scan to Connect Camera</h2>
+            <div id="qr-code-display"></div>
+            <div class="qr-info">
+                <p>Pairing Code: <strong id="qr-pairing-code">------</strong></p>
+                <p class="qr-instructions">Scan this QR code with your camera device or enter the code manually</p>
+            </div>
+            <button id="close-qr-btn" class="btn btn-primary">Close</button>
+        </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

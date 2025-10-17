@@ -280,11 +280,14 @@ header h1 {
     overflow: hidden;
 }
 
-/* Mobile: Ensure content doesn't overlap with fixed header */
+/* Mobile: Adjust video container height for fixed header */
 @media (max-width: 768px) {
     .video-container {
-        margin-top: 66px; /* Header height on mobile */
-        height: calc(100vh - 140px); /* Adjust for header */
+        height: calc(100vh - 132px); /* Full height minus header and body padding */
+    }
+
+    .main-content {
+        min-height: calc(100vh - 66px);
     }
 }
 
@@ -905,6 +908,11 @@ body.drawing-active #line-canvas {
 @media (max-width: 768px) {
     body {
         font-size: 16px;
+        padding-top: 66px; /* Account for fixed header */
+    }
+
+    .container {
+        padding-top: 0;
     }
 
     header {

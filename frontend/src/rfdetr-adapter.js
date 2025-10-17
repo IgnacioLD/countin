@@ -12,6 +12,18 @@ window.rfdetrAdapter = (() => {
     let tfLoaded = false;
 
     /**
+     * Add timeout to a promise
+     */
+    function withTimeout(promise, timeoutMs, errorMessage) {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
+            )
+        ]);
+    }
+
+    /**
      * Load TensorFlow.js and COCO-SSD from CDN dynamically
      */
     async function loadTensorFlow() {
@@ -23,28 +35,36 @@ window.rfdetrAdapter = (() => {
 
         console.log('Loading TensorFlow.js libraries...');
 
-        // Load TensorFlow.js
+        // Load TensorFlow.js with timeout
         if (!window.tf) {
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js';
-                script.async = true;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
+            await withTimeout(
+                new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js';
+                    script.async = true;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                30000, // 30 second timeout
+                'TensorFlow.js loading timed out'
+            );
         }
 
-        // Load COCO-SSD
+        // Load COCO-SSD with timeout
         if (!window.cocoSsd) {
-            await new Promise((resolve, reject) => {
-                const script = document.createElement('script');
-                script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
-                script.async = true;
-                script.onload = resolve;
-                script.onerror = reject;
-                document.head.appendChild(script);
-            });
+            await withTimeout(
+                new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
+                    script.async = true;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                }),
+                30000, // 30 second timeout
+                'COCO-SSD library loading timed out'
+            );
         }
 
         tfLoaded = true;
@@ -84,16 +104,24 @@ window.rfdetrAdapter = (() => {
 
             console.log('Loading COCO-SSD model...');
 
-            // Try to load the model from CDN
+            // Try to load the model from CDN with timeout
             try {
-                // Load the model with explicit base URL
-                model = await cocoSsd.load({
-                    base: 'lite_mobilenet_v2'
-                });
+                // Load the model with explicit base URL (60 second timeout)
+                model = await withTimeout(
+                    cocoSsd.load({
+                        base: 'lite_mobilenet_v2'
+                    }),
+                    60000,
+                    'Model loading timed out after 60 seconds'
+                );
             } catch (e) {
                 console.warn('Failed to load mobilenet model, trying default model', e);
-                // Fallback to default model
-                model = await cocoSsd.load();
+                // Fallback to default model with timeout
+                model = await withTimeout(
+                    cocoSsd.load(),
+                    60000,
+                    'Default model loading timed out after 60 seconds'
+                );
             }
 
             isLoaded = true;

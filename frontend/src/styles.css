@@ -1583,7 +1583,8 @@ body.drawing-active #line-canvas {
 }
 
 .camera-view.sidebar-hidden {
-    padding: 0;
+    padding-left: 0;
+    padding-right: 0;
 }
 
 /* Camera connected main layout */

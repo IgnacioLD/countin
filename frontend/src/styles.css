@@ -2103,11 +2103,11 @@ body.drawing-active #line-canvas {
 
     .camera-sidebar {
         position: fixed;
-        top: 0;
+        top: 66px; /* Below fixed header */
         left: 0;
         width: 80%;
         max-width: 320px;
-        height: 100vh;
+        height: calc(100vh - 66px); /* Full height minus header */
         z-index: 999;
         transform: translateX(0);
         box-shadow: var(--shadow-lg);
@@ -2120,13 +2120,14 @@ body.drawing-active #line-canvas {
     .sidebar-toggle-camera {
         left: auto !important;
         right: 1rem;
-        top: 1rem;
+        top: 80px; /* Below fixed header with some spacing */
         z-index: 1001;
     }
 
     .camera-view.sidebar-hidden .sidebar-toggle-camera {
         left: 1rem !important;
         right: auto;
+        top: 80px; /* Keep same position */
     }
 
     .camera-video-area {

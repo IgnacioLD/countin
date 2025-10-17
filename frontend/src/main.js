@@ -692,25 +692,25 @@ class CountInApp {
 
         this.log('Starting detection...');
 
-        // Initialize the tracking model FIRST
-        try {
-            if (!this.tracker.isModelLoaded) {
-                // Show loading modal
-                this.loadingModal.classList.add('active');
-                this.loadingStatus.textContent = 'Downloading AI model...';
-                this.loadingProgress.style.width = '30%';
+        // Start the processing loop IMMEDIATELY - don't wait for model
+        this.isRunning = true;
+        this.frameCount = 0;
+        this.processFrame();
 
-                this.log('Loading AI detection model (this may take a minute)...', 'info');
-                console.log('Starting tracker initialization...');
+        this.log('People counting started', 'success');
 
-                // Simulate progress updates
-                setTimeout(() => {
-                    this.loadingStatus.textContent = 'Initializing TensorFlow.js...';
-                    this.loadingProgress.style.width = '60%';
-                }, 500);
+        // Initialize the tracking model in the background (non-blocking)
+        if (!this.tracker.isModelLoaded) {
+            // Show loading modal (non-blocking)
+            this.loadingModal.classList.add('active');
+            this.loadingStatus.textContent = 'Downloading AI model in background...';
+            this.loadingProgress.style.width = '30%';
 
-                await this.tracker.initialize();
+            this.log('Loading AI detection model in background...', 'info');
+            console.log('Starting tracker initialization (non-blocking)...');
 
+            // Initialize in background - UI remains responsive
+            this.tracker.initialize().then(() => {
                 this.loadingStatus.textContent = 'Model loaded successfully!';
                 this.loadingProgress.style.width = '100%';
 
@@ -721,38 +721,39 @@ class CountInApp {
 
                 console.log('Tracker initialized, model loaded:', this.tracker.isModelLoaded);
                 this.log('AI detection model loaded successfully', 'success');
-            }
-        } catch (error) {
-            console.error('Failed to load AI model:', error);
-            this.loadingStatus.textContent = 'Model failed to load, using test mode';
-            this.loadingProgress.style.width = '100%';
+            }).catch((error) => {
+                console.error('Failed to load AI model:', error);
+                this.loadingStatus.textContent = 'Model failed to load, using test mode';
+                this.loadingProgress.style.width = '100%';
 
+                setTimeout(() => {
+                    this.loadingModal.classList.remove('active');
+                }, 1000);
+
+                this.log('AI model failed to load, using synthetic detections for testing', 'warning');
+                window.rfdetrAdapter.enableSyntheticDetections();
+            });
+
+            // Simulate progress updates in background
             setTimeout(() => {
-                this.loadingModal.classList.remove('active');
-            }, 1000);
-
-            this.log('AI model failed to load, using synthetic detections for testing', 'warning');
-            window.rfdetrAdapter.enableSyntheticDetections();
+                if (!this.tracker.isModelLoaded) {
+                    this.loadingStatus.textContent = 'Initializing TensorFlow.js...';
+                    this.loadingProgress.style.width = '60%';
+                }
+            }, 500);
         }
 
-        // Try to create session (but don't let it block detection)
-        try {
-            if (!this.currentSession) {
-                const sessionName = this.sessionNameInput?.value || `Session ${new Date().toLocaleString()}`;
-                this.currentSession = await apiService.createSession(sessionName);
+        // Try to create session in background (non-blocking)
+        if (!this.currentSession) {
+            const sessionName = this.sessionNameInput?.value || `Session ${new Date().toLocaleString()}`;
+            apiService.createSession(sessionName).then((session) => {
+                this.currentSession = session;
                 this.log(`Session created: ${sessionName}`, 'success');
-            }
-        } catch (error) {
-            console.warn('Backend API not available:', error);
-            this.log('Running in local mode (backend not connected)', 'warning');
+            }).catch((error) => {
+                console.warn('Backend API not available:', error);
+                this.log('Running in local mode (backend not connected)', 'warning');
+            });
         }
-
-        // Start the processing loop regardless of backend status
-        this.isRunning = true;
-        this.frameCount = 0;
-        this.processFrame();
-
-        this.log('People counting started - AI is now detecting people', 'success');
     }
 
     stopCounting() {

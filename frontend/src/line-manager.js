@@ -169,7 +169,7 @@ export class LineManager {
 
         // Track people inside area (for area type only)
         if (type === 'area') {
-            newLine.peopleInside = new Set();
+            newLine.peopleInside = new Map(); // Store person ID -> entry position
         }
 
         // Add to lines array
@@ -410,6 +410,7 @@ export class LineManager {
 
     /**
      * Check if a person has entered or exited an area
+     * Only counts when person EXITS the area (like a thick line)
      * @param {Object} area - Area object
      * @param {Object} person - Person object with ID
      * @param {Array} currentPos - Current position [x, y]
@@ -437,52 +438,97 @@ export class LineManager {
 
         // Detect entry or exit
         if (isInside && !wasInside) {
-            // Person entered the area
-            area.peopleInside.add(person.id);
+            // Person entered the area - store entry position but DON'T count yet
+            area.peopleInside.set(person.id, {
+                entryPosition: [...currentPos],
+                entryTime: Date.now()
+            });
 
-            if (!this.lineCrossings[area.id]) {
-                this.lineCrossings[area.id] = { in: 0, out: 0 };
-            }
-            this.lineCrossings[area.id].in++;
-
-            const crossingEvent = {
-                lineId: area.id,
-                lineName: area.name,
-                personId: person.id,
-                direction: 'in',
-                position: currentPos,
-                timestamp: Date.now()
-            };
-
-            console.log(`Person ${person.id} entered area ${area.name}`, crossingEvent);
-
-            if (this.onLineCrossed) {
-                this.onLineCrossed(crossingEvent);
-            }
+            console.log(`Person ${person.id} entered area ${area.name} (not counted yet)`);
         } else if (!isInside && wasInside) {
-            // Person exited the area
+            // Person exited the area - NOW we count and determine direction
+            const entryData = area.peopleInside.get(person.id);
             area.peopleInside.delete(person.id);
 
+            if (!entryData) {
+                console.log(`No entry data for person ${person.id}, skipping count`);
+                return;
+            }
+
+            // Determine direction based on entry vs exit positions
+            const direction = this.determineAreaExitDirection(
+                area,
+                entryData.entryPosition,
+                currentPos
+            );
+
             if (!this.lineCrossings[area.id]) {
                 this.lineCrossings[area.id] = { in: 0, out: 0 };
             }
-            this.lineCrossings[area.id].out++;
+            this.lineCrossings[area.id][direction]++;
 
             const crossingEvent = {
                 lineId: area.id,
                 lineName: area.name,
                 personId: person.id,
-                direction: 'out',
+                direction: direction,
                 position: currentPos,
                 timestamp: Date.now()
             };
 
-            console.log(`Person ${person.id} exited area ${area.name}`, crossingEvent);
+            console.log(`Person ${person.id} exited area ${area.name} going ${direction}`, crossingEvent);
 
             if (this.onLineCrossed) {
                 this.onLineCrossed(crossingEvent);
             }
         }
+    }
+
+    /**
+     * Determine the direction of area exit based on which side they exit from
+     * Uses the area's orientation (start -> end) to determine in/out
+     * @param {Object} area - Area object
+     * @param {Array} entryPos - Entry position [x, y]
+     * @param {Array} exitPos - Exit position [x, y]
+     * @returns {string} Direction ('in' or 'out')
+     */
+    determineAreaExitDirection(area, entryPos, exitPos) {
+        // Define the orientation line based on the area
+        let orientationStart, orientationEnd;
+
+        if (area.points && area.points.length >= 2) {
+            // Polygon: use first two points to define orientation
+            orientationStart = [area.points[0].x, area.points[0].y];
+            orientationEnd = [area.points[1].x, area.points[1].y];
+        } else {
+            // Rectangle: use start and end to define orientation
+            orientationStart = [area.start.x, area.start.y];
+            orientationEnd = [area.end.x, area.end.y];
+        }
+
+        // Determine which side of the orientation line the exit point is on
+        // Using cross product to determine side
+        const getSide = (px, py, x1, y1, x2, y2) => {
+            return (x2 - x1) * (py - y1) - (y2 - y1) * (px - x1);
+        };
+
+        const exitSide = getSide(
+            exitPos[0], exitPos[1],
+            orientationStart[0], orientationStart[1],
+            orientationEnd[0], orientationEnd[1]
+        );
+
+        // Invert direction if video is mirrored
+        const isMirrored = this.isVideoMirrored();
+
+        // Positive side is "out", negative side is "in"
+        let direction = exitSide > 0 ? 'out' : 'in';
+
+        if (isMirrored) {
+            direction = direction === 'in' ? 'out' : 'in';
+        }
+
+        return direction;
     }
 
     /**

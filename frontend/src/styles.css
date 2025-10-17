@@ -280,6 +280,14 @@ header h1 {
     overflow: hidden;
 }
 
+/* Mobile: Ensure content doesn't overlap with fixed header */
+@media (max-width: 768px) {
+    .video-container {
+        margin-top: 66px; /* Header height on mobile */
+        height: calc(100vh - 140px); /* Adjust for header */
+    }
+}
+
 #video {
     width: 100%;
     height: 100%;
@@ -904,6 +912,11 @@ body.drawing-active #line-canvas {
         flex-direction: row;
         justify-content: space-between;
         gap: 0.5rem;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1100;
     }
 
     .header-left {

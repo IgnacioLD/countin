@@ -9,11 +9,11 @@
 
 /* ---------- Design Tokens ---------- */
 :root {
-    /* Brand / accent */
-    --accent: #2563eb;
-    --accent-strong: #1d4ed8;
-    --accent-soft: rgba(37, 99, 235, 0.10);
-    --accent-softer: rgba(37, 99, 235, 0.06);
+    /* Brand / accent — matches CountIn logo (#03CEA4 teal) */
+    --accent: #03cea4;
+    --accent-strong: #029e86;
+    --accent-soft: rgba(3, 206, 164, 0.12);
+    --accent-softer: rgba(3, 206, 164, 0.06);
 
     /* Semantic */
     --success: #059669;
@@ -99,10 +99,10 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --accent: #3b82f6;
-        --accent-strong: #60a5fa;
-        --accent-soft: rgba(59, 130, 246, 0.18);
-        --accent-softer: rgba(59, 130, 246, 0.10);
+        --accent: #2dd4bf;
+        --accent-strong: #5eead4;
+        --accent-soft: rgba(45, 212, 191, 0.18);
+        --accent-softer: rgba(45, 212, 191, 0.10);
 
         --bg: #0b1120;
         --bg-elevated: #111827;

@@ -1391,10 +1391,21 @@ body.drawing-active .video-container { cursor: crosshair; }
     /* Collapse to icon-only buttons to fit narrow screens */
     .mode-indicator { display: none; }
     #count-target-btn .target-label { display: none; }
-    #count-target-btn { padding: var(--space-2); width: 36px; height: 36px; }
-    #count-target-btn .target-icon { font-size: var(--text-md); }
+    #count-target-btn { padding: 0; width: 44px; height: 44px; }
+    #count-target-btn .target-icon { font-size: var(--text-lg); }
     #settings-btn .btn-label { display: none; }
-    #settings-btn { padding: var(--space-2); width: 36px; height: 36px; }
+    #settings-btn { padding: 0; width: 44px; height: 44px; font-size: var(--text-lg); }
+    .panel-toggle { width: 44px; height: 44px; }
+
+    /* Comfortable touch targets everywhere (44px min) */
+    .btn { min-height: 44px; }
+    .btn-small { padding: var(--space-3) var(--space-4); min-height: 44px; font-size: var(--text-base); }
+    .btn-icon { width: 44px; height: 44px; }
+    .line-delete-btn, .line-direction-btn { width: 40px; height: 40px; font-size: var(--text-md); }
+
+    /* Prevent iOS input zoom (>=16px) and ease typing */
+    .input, input[type="text"], textarea, select { font-size: 16px; }
+    .input-large { font-size: var(--text-xl); padding: var(--space-4); letter-spacing: 0.25em; }
 
     .container { padding: var(--space-3); }
 

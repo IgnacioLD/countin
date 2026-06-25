@@ -51,6 +51,7 @@ class CountInApp {
         // Session controls
         this.saveSessionBtn = document.getElementById('save-session-btn');
         this.exportDataBtn = document.getElementById('export-data-btn');
+        this.countToggleBtn = document.getElementById('count-toggle-btn');
 
         // Log container
         this.logEl = document.getElementById('log');
@@ -282,50 +283,8 @@ class CountInApp {
     }
 
     setupOnboardingButtons() {
-        const lineModeOnboard = document.getElementById('line-mode-onboard');
-        const areaModeOnboard = document.getElementById('area-mode-onboard');
-
-        console.log('Setting up onboarding buttons:', !!lineModeOnboard, !!areaModeOnboard);
-
-        if (lineModeOnboard && areaModeOnboard) {
-            lineModeOnboard.onclick = (e) => {
-                console.log('Line mode clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.setDrawingMode('line');
-                lineModeOnboard.classList.add('active');
-                areaModeOnboard.classList.remove('active');
-
-                // Close setup guide and enable drawing immediately
-                const setupGuide = document.getElementById('setup-guide');
-                if (setupGuide) {
-                    setupGuide.classList.remove('active');
-                }
-                this.lineManager.enableDrawing();
-                this.log('Line mode ready - click and drag to draw lines', 'info');
-            };
-
-            areaModeOnboard.onclick = (e) => {
-                console.log('Area mode clicked');
-                e.preventDefault();
-                e.stopPropagation();
-                this.setDrawingMode('area');
-                areaModeOnboard.classList.add('active');
-                lineModeOnboard.classList.remove('active');
-
-                // Close setup guide and enable drawing immediately
-                const setupGuide = document.getElementById('setup-guide');
-                if (setupGuide) {
-                    setupGuide.classList.remove('active');
-                }
-                this.lineManager.enableDrawing();
-                this.log('Area mode ready - click and drag to draw areas', 'info');
-            };
-
-            console.log('Onboarding button handlers attached');
-        } else {
-            console.error('Onboarding buttons not found!');
-        }
+        // The setup hint overlay is now self-dismissing ("Got it" → dismissSetupGuide).
+        // Drawing tools live in the sidebar, so nothing to wire here.
     }
 
     completeOnboarding() {
@@ -440,9 +399,14 @@ class CountInApp {
     }
 
     setupEventListeners() {
-        // Mode buttons
-        this.setupModeBtn.addEventListener('click', () => this.setMode('setup'));
-        this.countingModeBtn.addEventListener('click', () => this.setMode('counting'));
+        // Mode buttons (now live in the dashboard CTA; settings toggle removed)
+        this.setupModeBtn?.addEventListener('click', () => this.setMode('setup'));
+        this.countingModeBtn?.addEventListener('click', () => this.setMode('counting'));
+
+        // Primary Start/Stop counting action
+        if (this.countToggleBtn) {
+            this.countToggleBtn.addEventListener('click', () => this.toggleCounting());
+        }
 
         // Session actions
         if (this.saveSessionBtn) {
@@ -453,7 +417,7 @@ class CountInApp {
         }
 
         // Line controls
-        this.clearLinesBtn.addEventListener('click', () => this.lineManager.clearLines());
+        this.clearLinesBtn?.addEventListener('click', () => this.lineManager.clearLines());
         this.clearLinesSidebarBtn.addEventListener('click', () => {
             if (confirm('Clear all lines and areas?')) {
                 this.lineManager.clearLines();
@@ -465,9 +429,9 @@ class CountInApp {
             }
         });
 
-        // Drawing mode buttons (in settings modal)
-        this.lineModeBtn.addEventListener('click', () => this.setDrawingMode('line'));
-        this.areaModeBtn.addEventListener('click', () => this.setDrawingMode('area'));
+        // Drawing mode buttons (in settings modal — may be absent after UX simplification)
+        this.lineModeBtn?.addEventListener('click', () => this.setDrawingMode('line'));
+        this.areaModeBtn?.addEventListener('click', () => this.setDrawingMode('area'));
 
         // Drawing mode buttons (in sidebar)
         this.lineModeSidebarBtn.addEventListener('click', () => this.setDrawingMode('line'));
@@ -591,12 +555,11 @@ class CountInApp {
     }
 
     setMode(mode) {
-        console.log('setMode called with:', mode, 'current mode:', this.mode);
         if (mode === this.mode) {
-            console.log('Mode already set to', mode, '- forcing enable drawing anyway');
             if (mode === 'setup') {
                 this.lineManager.enableDrawing();
             }
+            this.updateCountToggle();
             return;
         }
 
@@ -605,52 +568,83 @@ class CountInApp {
                 this.stopCounting();
             }
 
-            this.setupModeBtn.classList.add('active');
-            this.countingModeBtn.classList.remove('active');
-            this.currentModeEl.textContent = 'Setup';
+            this.setupModeBtn?.classList.add('active');
+            this.countingModeBtn?.classList.remove('active');
+            if (this.currentModeEl) this.currentModeEl.textContent = 'Setup';
             this.lineManager.enableDrawing();
 
-            // Don't show setup guide if onboarding is complete
             if (!this.isOnboarding) {
-                this.log('Setup mode active. Open Settings to change drawing tools.', 'info');
+                this.log('Setup mode — draw lines, then Start Counting.', 'info');
             }
         } else if (mode === 'counting') {
             if (this.lineManager.getLines().length === 0) {
-                this.log('Please draw at least one counting line before starting counting mode', 'error');
+                this.log('Draw at least one counting line first.', 'error');
                 return;
             }
 
-            this.setupModeBtn.classList.remove('active');
-            this.countingModeBtn.classList.add('active');
-            this.currentModeEl.textContent = 'Counting';
+            this.setupModeBtn?.classList.remove('active');
+            this.countingModeBtn?.classList.add('active');
+            if (this.currentModeEl) this.currentModeEl.textContent = 'Counting';
             this.lineManager.disableDrawing();
 
             if (!this.isRunning) {
                 this.startCounting();
             }
 
-            this.log('Switched to counting mode', 'info');
+            this.log('Counting started', 'success');
         }
 
         this.mode = mode;
+        this.updateCountToggle();
+    }
+
+    /** Toggle between setup and counting via the primary CTA. */
+    toggleCounting() {
+        if (this.mode === 'counting') {
+            this.setMode('setup');
+        } else {
+            this.setMode('counting');
+        }
+    }
+
+    /** Keep the Start/Stop CTA label and state in sync. */
+    updateCountToggle() {
+        if (!this.countToggleBtn) return;
+        if (this.mode === 'counting') {
+            this.countToggleBtn.textContent = 'Stop Counting';
+            this.countToggleBtn.classList.remove('btn-primary');
+            this.countToggleBtn.classList.add('btn-danger');
+            this.countToggleBtn.disabled = false;
+        } else {
+            this.countToggleBtn.textContent = 'Start Counting';
+            this.countToggleBtn.classList.add('btn-primary');
+            this.countToggleBtn.classList.remove('btn-danger');
+            this.countToggleBtn.disabled = this.lineManager.getLines().length === 0;
+        }
+    }
+
+    /** Dismiss the lightweight setup hint overlay. */
+    dismissSetupGuide() {
+        const guide = document.getElementById('setup-guide');
+        if (guide) guide.classList.remove('active');
     }
 
     setDrawingMode(mode) {
-        // Update button active states (all locations)
+        // Update button active states (sidebar + camera sidebar; settings buttons may be absent)
         if (mode === 'line') {
-            this.lineModeBtn.classList.add('active');
-            this.areaModeBtn.classList.remove('active');
-            this.lineModeSidebarBtn.classList.add('active');
-            this.areaModeSidebarBtn.classList.remove('active');
-            this.lineModeCameraBtn.classList.add('active');
-            this.areaModeCameraBtn.classList.remove('active');
+            this.lineModeBtn?.classList.add('active');
+            this.areaModeBtn?.classList.remove('active');
+            this.lineModeSidebarBtn?.classList.add('active');
+            this.areaModeSidebarBtn?.classList.remove('active');
+            this.lineModeCameraBtn?.classList.add('active');
+            this.areaModeCameraBtn?.classList.remove('active');
         } else if (mode === 'area') {
-            this.lineModeBtn.classList.remove('active');
-            this.areaModeBtn.classList.add('active');
-            this.lineModeSidebarBtn.classList.remove('active');
-            this.areaModeSidebarBtn.classList.add('active');
-            this.lineModeCameraBtn.classList.remove('active');
-            this.areaModeCameraBtn.classList.add('active');
+            this.lineModeBtn?.classList.remove('active');
+            this.areaModeBtn?.classList.add('active');
+            this.lineModeSidebarBtn?.classList.remove('active');
+            this.areaModeSidebarBtn?.classList.add('active');
+            this.lineModeCameraBtn?.classList.remove('active');
+            this.areaModeCameraBtn?.classList.add('active');
         }
 
         // Set the drawing mode on the line manager
@@ -879,6 +873,7 @@ class CountInApp {
     updateLineList() {
         const lines = this.lineManager.getLines();
         const lineCrossings = this.lineManager.getLineCrossings();
+        this.updateCountToggle();
 
         if (lines.length === 0) {
             this.lineListEl.innerHTML = '<div class="empty-state">No lines added yet</div>';

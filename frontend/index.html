@@ -41,17 +41,10 @@
                 <!-- Setup Guide Overlay -->
                 <div class="setup-guide" id="setup-guide">
                     <div class="setup-guide-content">
-                        <h3>Draw Counting Zones</h3>
-                        <p>Click and drag on the video to create lines or areas</p>
-
-                        <div class="setup-tools">
-                            <button id="line-mode-onboard" class="btn btn-mode-select active">Line</button>
-                            <button id="area-mode-onboard" class="btn btn-mode-select">Area</button>
-                        </div>
-
+                        <h3>Draw a counting line</h3>
+                        <p>Click and drag across the video where people pass. Then hit <strong>Start Counting</strong>.</p>
                         <div class="setup-actions">
-                            <button class="btn btn-secondary btn-small" onclick="window.countInApp.skipOnboarding()">Skip</button>
-                            <button class="btn btn-primary btn-small" onclick="window.countInApp.completeOnboarding()">Start Counting</button>
+                            <button class="btn btn-primary btn-small" onclick="window.countInApp.dismissSetupGuide()">Got it</button>
                         </div>
                     </div>
                 </div>
@@ -95,6 +88,8 @@
                         <div class="empty-state">No lines added yet</div>
                     </div>
                 </div>
+
+                <button id="count-toggle-btn" class="btn btn-primary btn-large btn-full" disabled>Start Counting</button>
             </div>
         </div>
 
@@ -326,23 +321,6 @@
                     <input type="checkbox" id="mirror-video-checkbox">
                     <span>Mirror Video</span>
                 </label>
-            </div>
-
-            <div class="settings-section" id="counting-mode-section">
-                <h3>Counting Mode</h3>
-                <div class="mode-toggle">
-                    <button id="setup-mode-btn" class="btn btn-mode active">Setup</button>
-                    <button id="counting-mode-btn" class="btn btn-mode">Counting</button>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <h3>Drawing Tools</h3>
-                <div class="drawing-mode-toggle">
-                    <button id="line-mode-btn" class="btn btn-mode-select active">Line</button>
-                    <button id="area-mode-btn" class="btn btn-mode-select">Area</button>
-                </div>
-                <button id="clear-lines-btn" class="btn btn-full">Clear All Lines</button>
             </div>
 
             <button id="close-settings-btn" class="btn btn-primary btn-large">Close</button>

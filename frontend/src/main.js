@@ -52,6 +52,7 @@ class CountInApp {
         this.saveSessionBtn = document.getElementById('save-session-btn');
         this.exportDataBtn = document.getElementById('export-data-btn');
         this.countToggleBtn = document.getElementById('count-toggle-btn');
+        this.toggleDashboardBtn = document.getElementById('toggle-dashboard-btn');
 
         // Log container
         this.logEl = document.getElementById('log');
@@ -408,6 +409,11 @@ class CountInApp {
             this.countToggleBtn.addEventListener('click', () => this.toggleCounting());
         }
 
+        // Mobile: hide/show the dashboard panel to focus on the video
+        if (this.toggleDashboardBtn) {
+            this.toggleDashboardBtn.addEventListener('click', () => this.toggleDashboard());
+        }
+
         // Session actions
         if (this.saveSessionBtn) {
             this.saveSessionBtn.addEventListener('click', () => this.saveSession());
@@ -627,6 +633,17 @@ class CountInApp {
     dismissSetupGuide() {
         const guide = document.getElementById('setup-guide');
         if (guide) guide.classList.remove('active');
+    }
+
+    /** Mobile: collapse the dashboard panel so the video fills the screen. */
+    toggleDashboard() {
+        const main = document.querySelector('.main-content');
+        if (!main) return;
+        const hidden = main.classList.toggle('panel-hidden');
+        if (this.toggleDashboardBtn) {
+            this.toggleDashboardBtn.title = hidden ? 'Show panel' : 'Hide panel';
+            this.toggleDashboardBtn.setAttribute('aria-label', hidden ? 'Show panel' : 'Hide panel');
+        }
     }
 
     setDrawingMode(mode) {

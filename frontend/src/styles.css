@@ -551,6 +551,22 @@ header {
 body.drawing-active { cursor: crosshair; }
 body.drawing-active .video-container { cursor: crosshair; }
 
+/* Panel toggle button (hidden on desktop, shown on mobile) */
+.panel-toggle {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    z-index: 6;
+    display: none;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border-color: transparent;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.panel-toggle svg { width: 18px; height: 18px; }
+.panel-toggle:hover { background: rgba(0, 0, 0, 0.7); }
+
 /* ---------- Dashboard Panel ---------- */
 .dashboard-panel {
     display: flex;
@@ -1393,6 +1409,11 @@ body.drawing-active .video-container { cursor: crosshair; }
     .video-container { aspect-ratio: auto; height: 45vh; }
     /* Dashboard stacks below video */
     .dashboard-panel { gap: var(--space-4); }
+
+    /* Show the panel toggle on mobile; let video go full-height when hidden */
+    .panel-toggle { display: inline-flex; }
+    .main-content.panel-hidden .dashboard-panel { display: none; }
+    .main-content.panel-hidden .video-container { height: calc(100vh - var(--header-height) - var(--space-6)); }
 }
 
 @media (max-width: 720px) {

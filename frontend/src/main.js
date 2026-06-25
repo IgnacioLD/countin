@@ -1732,6 +1732,17 @@ class CountInApp {
         cameraPairing.style.display = 'none';
         cameraConnected.style.display = 'grid';
 
+        // On small screens the sidebar is a full overlay — start collapsed so the
+        // video is visible first. User can open it with the toggle button.
+        const cameraView = document.getElementById('camera-view');
+        if (cameraView && window.matchMedia('(max-width: 1024px)').matches) {
+            cameraView.classList.add('sidebar-hidden');
+            const toggleBtn = document.getElementById('toggle-camera-sidebar');
+            const icon = toggleBtn?.querySelector('.toggle-icon');
+            if (icon) icon.textContent = '>';
+            if (toggleBtn) toggleBtn.title = 'Show sidebar';
+        }
+
         // Update display
         document.getElementById('camera-display-name').textContent = this.cameraStation.name;
         document.getElementById('camera-display-location').textContent = this.cameraStation.location || '';

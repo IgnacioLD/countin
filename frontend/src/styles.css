@@ -1364,6 +1364,20 @@ body.drawing-active .video-container { cursor: crosshair; }
     }
     .camera-connected-main.sidebar-hidden .camera-sidebar,
     .sidebar-hidden .camera-sidebar { transform: translateX(-100%); }
+
+    /* Keep the toggle tappable above the open sidebar overlay, and float it so it
+       stays reachable whether the sidebar is open or closed. */
+    .sidebar-toggle-camera {
+        z-index: calc(var(--z-overlay) + 1);
+        position: fixed;
+        top: calc(var(--header-height) + var(--space-3));
+        left: var(--space-3);
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        border-color: transparent;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+    }
 }
 
 @media (max-width: 720px) {

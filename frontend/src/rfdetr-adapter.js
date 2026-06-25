@@ -171,38 +171,41 @@ window.rfdetrAdapter = (() => {
     }
 
     /**
-     * Detect people in an image or video frame
+     * Detect objects in an image or video frame
      * @param {HTMLImageElement|HTMLVideoElement} input - Input element
-     * @returns {Promise<Array>} Array of person detections
+     * @param {Array<string>=} classes - Optional allow-list of class names; omit for all COCO classes
+     * @returns {Promise<Array>} Array of detections {bbox:[x,y,w,h], class, score}
      */
-    async function detectPeople(input) {
-        // Make sure model is loaded
+    async function detectObjects(input, classes) {
         if (!isLoaded) {
             await loadModel();
         }
 
         try {
-            // Run detection
             const predictions = await model.detect(input);
+            const allow = Array.isArray(classes) && classes.length > 0 ? new Set(classes) : null;
 
-            // Filter predictions to only include people
-            const people = predictions.filter(pred => pred.class === 'person');
-
-            // Convert to our format (similar to RF-DETR)
-            return people.map(person => ({
-                bbox: [
-                    person.bbox[0], // x
-                    person.bbox[1], // y
-                    person.bbox[2], // width
-                    person.bbox[3]  // height
-                ],
-                class: 'person',
-                score: person.score
-            }));
+            return predictions
+                .filter(pred => !allow || allow.has(pred.class))
+                .map(pred => ({
+                    bbox: [pred.bbox[0], pred.bbox[1], pred.bbox[2], pred.bbox[3]],
+                    class: pred.class,
+                    score: pred.score,
+                }));
         } catch (error) {
             console.error('Detection error:', error);
             return [];
         }
+    }
+
+    /**
+     * Detect people in an image or video frame (backwards compatible)
+     * @param {HTMLImageElement|HTMLVideoElement} input - Input element
+     * @returns {Promise<Array>} Array of person detections
+     */
+    async function detectPeople(input) {
+        const predictions = await detectObjects(input, ['person']);
+        return predictions.map(p => ({ ...p, class: 'person' }));
     }
 
     /**
@@ -237,6 +240,7 @@ window.rfdetrAdapter = (() => {
     return {
         loadModel,
         detectPeople,
+        detectObjects,
         mapToViewport,
 
         // Toggle synthetic detections

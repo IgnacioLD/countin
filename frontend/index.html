@@ -17,11 +17,15 @@
             <span class="tagline-header">Privacy-focused people counting</span>
         </div>
         <div class="header-controls">
+            <button id="count-target-btn" class="btn btn-secondary btn-small" title="Choose what to count">
+                <span class="target-icon">🎯</span>
+                <span class="target-label">Counting: <strong data-target-classes-display>person</strong></span>
+            </button>
             <div class="mode-indicator">
                 <span class="mode-label">Mode:</span>
                 <span id="current-mode" class="mode-value">Setup</span>
             </div>
-            <button id="settings-btn" class="btn btn-secondary">⚙️ Settings</button>
+            <button id="settings-btn" class="btn btn-secondary btn-small">⚙️ Settings</button>
         </div>
     </header>
 
@@ -69,6 +73,10 @@
                             <div class="stat-value">0</div>
                             <div class="stat-label">Out</div>
                         </div>
+                    </div>
+                    <div class="session-actions">
+                        <button id="save-session-btn" class="btn btn-secondary btn-small" disabled>Save Session</button>
+                        <button id="export-data-btn" class="btn btn-secondary btn-small" disabled>Export Data</button>
                     </div>
                 </div>
 
@@ -241,43 +249,47 @@
         </div>
     </div>
 
-    <!-- Onboarding Flow -->
-    <div id="onboarding-modal" class="modal active">
-        <div class="modal-content onboarding-content">
-            <!-- Step 1: Welcome -->
-            <div class="onboarding-step active" data-step="1">
-                <div class="welcome-header">
-                    <h1>CountIn</h1>
-                    <p class="tagline">Privacy-focused people counting</p>
-                </div>
-                <button class="btn btn-primary btn-large" onclick="window.countInApp.nextOnboardingStep()">Start Setup</button>
+    <!-- Landing Page / Mode Selection -->
+    <div id="onboarding-modal" class="modal active landing-modal">
+        <div class="modal-content landing-content">
+            <div class="landing-hero">
+                <div class="landing-mark"><img src="/favicon.svg" alt=""></div>
+                <h1>CountIn</h1>
+                <p class="tagline">Privacy-focused object counting, right in your browser.</p>
+                <p class="landing-sub">Count people, vehicles, or any of 80 object classes in real time using on-device AI. Draw a line or area, and CountIn tracks crossings — no video ever leaves your device.</p>
             </div>
 
-            <!-- Step 2: Choose Mode -->
-            <div class="onboarding-step" data-step="2">
-                <h2>Choose Your Mode</h2>
-                <p class="mode-description">How would you like to use CountIn?</p>
-
+            <div class="modes-wrap">
+                <h2 class="modes-heading">Choose how to start</h2>
                 <div class="mode-selection">
                     <button class="mode-card" onclick="window.countInApp.selectMode('standalone')">
-                        <div class="mode-icon">📊</div>
-                        <h3>Standalone</h3>
-                        <p>Single camera counting</p>
-                        <span class="mode-tag">Quick Start</span>
+                        <span class="mode-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        </span>
+                        <span class="mode-body">
+                            <span class="mode-title">Standalone</span>
+                            <span class="mode-desc">Count from a single camera on this device.</span>
+                        </span>
                     </button>
 
                     <button class="mode-card" onclick="window.countInApp.selectMode('hub')">
-                        <div class="mode-icon">🎯</div>
-                        <h3>Hub Dashboard</h3>
-                        <p>Monitor multiple cameras</p>
-                        <span class="mode-tag">Multi-Location</span>
+                        <span class="mode-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        </span>
+                        <span class="mode-body">
+                            <span class="mode-title">Hub Dashboard</span>
+                            <span class="mode-desc">Monitor counts from many camera stations at once.</span>
+                        </span>
                     </button>
 
                     <button class="mode-card" onclick="window.countInApp.selectMode('camera')">
-                        <div class="mode-icon">📱</div>
-                        <h3>Camera Station</h3>
-                        <p>Connect to a hub</p>
-                        <span class="mode-tag">Privacy First</span>
+                        <span class="mode-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                        </span>
+                        <span class="mode-body">
+                            <span class="mode-title">Camera Station</span>
+                            <span class="mode-desc">Connect this device's camera to a hub. Sends counts only.</span>
+                        </span>
                     </button>
                 </div>
             </div>
@@ -375,6 +387,17 @@
                 <p class="qr-instructions">Scan this QR code with your camera device or enter the code manually</p>
             </div>
             <button id="close-qr-btn" class="btn btn-primary">Close</button>
+        </div>
+    </div>
+
+    <!-- Class Picker Modal -->
+    <div id="class-picker-modal" class="modal">
+        <div class="modal-content class-picker-content">
+            <h2>What do you want to count?</h2>
+            <p class="modal-subtitle">Pick any object class. You can select more than one.</p>
+            <input type="text" id="class-search-input" class="input" placeholder="Search 80 classes… (person, car, dog…)" />
+            <div id="class-chips" class="class-chips"></div>
+            <button id="close-class-picker-btn" class="btn btn-primary btn-large btn-full">Done</button>
         </div>
     </div>
 

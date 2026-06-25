@@ -10,10 +10,26 @@ export class CameraService {
     }
 
     /**
+     * Verify the browser can access the camera API.
+     * getUserMedia requires a secure context (HTTPS or localhost).
+     */
+    checkCameraSupport() {
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+            const host = window.location.hostname;
+            const isLocalhost = host === 'localhost' || host === '127.0.0.1';
+            const hint = isLocalhost
+                ? 'Your browser blocked camera access. Check permissions or try Chrome/Edge.'
+                : `Camera access requires HTTPS or localhost. You're on ${window.location.origin} — open http://localhost:3000 on this device, or serve CountIn over HTTPS.`;
+            throw new Error(hint);
+        }
+    }
+
+    /**
      * Get all available video input devices
      */
     async getVideoDevices() {
         try {
+            this.checkCameraSupport();
             // Request initial permissions
             const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
             tempStream.getTracks().forEach(track => track.stop());
@@ -35,6 +51,7 @@ export class CameraService {
      */
     async startCamera(deviceId, constraints = {}) {
         try {
+            this.checkCameraSupport();
             // Stop any existing stream
             this.stopCamera();
 

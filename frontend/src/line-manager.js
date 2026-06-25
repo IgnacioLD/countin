@@ -29,6 +29,12 @@ export class LineManager {
 
         // Track crossings to prevent duplicate counts
         this.crossedTracks = new Map();
+        // Per-line, per-track signed-side state for robust crossing detection.
+        // Key: `${lineId}:${trackId}` -> last confirmed side (-1 | 0 | 1).
+        this.trackSides = new Map();
+        // Hysteresis margin (px of signed distance) a point must clear before a
+        // side flip is accepted as a real crossing (kills jitter double-counts).
+        this.crossingMargin = 6;
 
         // Event callbacks
         this.onLineAdded = null;
@@ -212,6 +218,9 @@ export class LineManager {
                 }
             }
 
+            // Drop per-track side state for this line
+            this.clearSideStateForLine(lineId);
+
             // Trigger callback if exists
             if (this.onLineRemoved) {
                 this.onLineRemoved(removedLine);
@@ -243,6 +252,9 @@ export class LineManager {
 
         // Clear the tracking of already crossed tracks
         this.crossedTracks.clear();
+
+        // Clear per-track side state
+        this.trackSides.clear();
 
         // Clear canvas
         this.redrawLines();
@@ -290,100 +302,99 @@ export class LineManager {
         // Clear the tracking of already crossed tracks
         this.crossedTracks.clear();
 
+        // Clear per-track side state
+        this.trackSides.clear();
+
         console.log('All line crossing counts reset');
     }
 
+    /** Remove side-state entries for a single line (used on line deletion). */
+    clearSideStateForLine(lineId) {
+        const prefix = `${lineId}:`;
+        for (const key of [...this.trackSides.keys()]) {
+            if (key.startsWith(prefix)) this.trackSides.delete(key);
+        }
+    }
+
     /**
-     * Check for line crossings when a tracked object moves
-     * @param {Object} person - Person object with ID
-     * @param {Array} prevPos - Previous position [x, y]
+     * Check for line crossings when a tracked object moves.
+     *
+     * Uses signed-side state per (line, track): a crossing is counted only when
+     * the object's side of the line actually flips, and only after it clears a
+     * small hysteresis margin. This is far more robust than per-frame segment
+     * intersection + a time-based dedup: it survives tracker jitter, ID re-use
+     * after brief disappearances, and fast motion that skips frames.
+     *
+     * @param {Object} person - Track object with id
+     * @param {Array} prevPos - Previous position [x, y] (unused, kept for API)
      * @param {Array} currentPos - Current position [x, y]
      */
     checkLineCrossings(person, prevPos, currentPos) {
-        if (!person || !person.id || !prevPos || !currentPos) return;
+        if (!person || person.id == null || !currentPos) return;
 
-        // Scale detection coordinates to match canvas coordinates
-        const scaleX = this.canvas.width / this.videoElement.videoWidth;
-        const scaleY = this.canvas.height / this.videoElement.videoHeight;
+        const scaleX = this.canvas.width / (this.videoElement.videoWidth || this.canvas.width);
+        const scaleY = this.canvas.height / (this.videoElement.videoHeight || this.canvas.height);
+        const cur = [currentPos[0] * scaleX, currentPos[1] * scaleY];
+        const mirrored = this.isVideoMirrored();
+        const now = Date.now();
 
-        const scaledPrevPos = [prevPos[0] * scaleX, prevPos[1] * scaleY];
-        const scaledCurrentPos = [currentPos[0] * scaleX, currentPos[1] * scaleY];
-
-        // Check crossing for each line or area
         for (const line of this.lines) {
             if (line.type === 'area') {
-                // Handle area entry/exit detection
-                this.checkAreaCrossing(line, person, scaledCurrentPos);
-            } else {
-                // Handle line crossing detection (original logic)
-                // Get line points
-                const lineStart = [line.start.x, line.start.y];
-                const lineEnd = [line.end.x, line.end.y];
+                this.checkAreaCrossing(line, person, cur);
+                continue;
+            }
 
-                // Check if the trajectory crosses the line
-                const intersection = this.lineIntersection(
-                    scaledPrevPos, scaledCurrentPos,
-                    lineStart, lineEnd
-                );
+            const a = [line.start.x, line.start.y];
+            const b = [line.end.x, line.end.y];
 
-                // If no intersection, continue to next line
-                if (!intersection) continue;
+            // Signed perpendicular distance: sign tells the side, magnitude the distance.
+            const signed = this.signedSide(cur, a, b);
+            const lineLen = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+            const perpDist = Math.abs(signed) / lineLen; // true px distance from the line
+            const side = Math.sign(signed); // -1 | 0 | 1
+            const key = `${line.id}:${person.id}`;
+            const prevSide = this.trackSides.get(key);
 
-                // Create a unique key for this person-line pair
-                const crossingKey = `${person.id}-${line.id}`;
+            if (prevSide === undefined) {
+                // First sighting: just record which side they're on, don't count.
+                // Only commit a side once they're clearly off the line.
+                if (perpDist >= this.crossingMargin) this.trackSides.set(key, side);
+                continue;
+            }
 
-                // If we already counted this crossing recently, skip it
-                const lastCrossing = this.crossedTracks.get(crossingKey);
-                const now = Date.now();
+            // Require the new side to differ AND clear the margin (hysteresis).
+            if (side !== 0 && side !== prevSide && perpDist >= this.crossingMargin) {
+                // Direction: negative -> positive side is "in", positive -> negative is "out".
+                // This is consistent regardless of line orientation; the user can flip a
+                // line's direction with the existing swap control.
+                let direction = side > prevSide ? 'in' : 'out';
+                if (mirrored) direction = direction === 'in' ? 'out' : 'in';
 
-                if (lastCrossing && (now - lastCrossing.timestamp) < 2000) {
-                    // Skip if crossed within the last 2 seconds
-                    console.log(`Skipping duplicate crossing of ${crossingKey}`);
-                    continue;
-                }
+                this.trackSides.set(key, side);
 
-                // Determine crossing direction
-                let direction = this.determineLineCrossingDirection(
-                    scaledPrevPos, scaledCurrentPos,
-                    lineStart, lineEnd
-                );
-
-                // Invert direction if video is mirrored
-                if (this.isVideoMirrored()) {
-                    direction = direction === 'in' ? 'out' : 'in';
-                }
-
-                // Update count for this line
-                if (!this.lineCrossings[line.id]) {
-                    this.lineCrossings[line.id] = { in: 0, out: 0 };
-                }
-
+                if (!this.lineCrossings[line.id]) this.lineCrossings[line.id] = { in: 0, out: 0 };
                 this.lineCrossings[line.id][direction]++;
 
-                // Remember this crossing to prevent duplicates
-                this.crossedTracks.set(crossingKey, {
-                    timestamp: now,
-                    direction
-                });
-
-                // Create crossing event
                 const crossingEvent = {
                     lineId: line.id,
                     lineName: line.name,
                     personId: person.id,
                     direction,
-                    position: intersection,
-                    timestamp: now
+                    position: cur,
+                    timestamp: now,
                 };
 
-                console.log(`Person ${person.id} crossed ${line.name} going ${direction}`, crossingEvent);
-
-                // Trigger callback if exists
-                if (this.onLineCrossed) {
-                    this.onLineCrossed(crossingEvent);
-                }
+                if (this.onLineCrossed) this.onLineCrossed(crossingEvent);
             }
         }
+    }
+
+    /**
+     * Signed side of point p relative to the directed line a -> b.
+     * Positive/negative indicates which side; magnitude ~ perpendicular distance.
+     */
+    signedSide(p, a, b) {
+        return (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
     }
 
     /**

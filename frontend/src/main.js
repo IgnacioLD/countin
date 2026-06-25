@@ -8,6 +8,7 @@ import apiService from './services/api.js';
 import { PersonTracker } from './tracker.js';
 import { LineManager } from './line-manager.js';
 import { CountingVisualization } from './visualization.js';
+import { COCO_CLASSES, CLASS_ICONS, POPULAR_CLASSES } from './coco-classes.js';
 import QRCode from 'qrcode';
 import Chart from 'chart.js/auto';
 import './rfdetr-adapter.js';
@@ -48,7 +49,6 @@ class CountInApp {
         this.outCountEl = document.querySelector('#out-count .stat-value');
 
         // Session controls
-        this.sessionNameInput = document.getElementById('session-name');
         this.saveSessionBtn = document.getElementById('save-session-btn');
         this.exportDataBtn = document.getElementById('export-data-btn');
 
@@ -62,10 +62,15 @@ class CountInApp {
 
         // Initialize components
         this.lineManager = new LineManager(this.lineCanvas, this.video);
+
+        // Which object classes to count (any COCO-SSD class). Persisted.
+        this.targetClasses = this.loadTargetClasses();
+
         this.tracker = new PersonTracker({
             confidenceThreshold: 0.4,
             maxDisappearedFrames: 15,
             historyLength: 10,
+            targetClasses: this.targetClasses,
         });
         this.visualization = new CountingVisualization('chart-container');
         this.cameraSelector = new CameraSelector('camera-modal', (stream, deviceId) =>
@@ -123,6 +128,10 @@ class CountInApp {
 
         // Set up callbacks
         this.setupCallbacks();
+
+        // Reflect saved counting target in the UI
+        this.renderTargetClasses();
+        this.buildClassPicker();
 
         // Set up event listeners
         this.setupEventListeners();
@@ -188,20 +197,6 @@ class CountInApp {
         }
 
         this.log('Initialization complete.', 'success');
-    }
-
-    nextOnboardingStep() {
-        const onboardingModal = document.getElementById('onboarding-modal');
-
-        // Progress from step 1 (welcome) to step 2 (mode selection)
-        if (this.onboardingStep === 1) {
-            const step1 = onboardingModal.querySelector('[data-step="1"]');
-            const step2 = onboardingModal.querySelector('[data-step="2"]');
-
-            step1.classList.remove('active');
-            step2.classList.add('active');
-            this.onboardingStep = 2;
-        }
     }
 
     selectMode(mode) {
@@ -445,29 +440,17 @@ class CountInApp {
     }
 
     setupEventListeners() {
-        // Welcome tutorial
-        const welcomeModal = document.getElementById('welcome-modal');
-        const startTutorialBtn = document.getElementById('start-tutorial-btn');
-        const dontShowCheckbox = document.getElementById('dont-show-tutorial');
-
-        // Check if user has dismissed tutorial
-        const tutorialDismissed = localStorage.getItem('countin-tutorial-dismissed');
-        if (tutorialDismissed) {
-            welcomeModal.classList.remove('active');
-        }
-
-        startTutorialBtn?.addEventListener('click', () => {
-            if (dontShowCheckbox.checked) {
-                localStorage.setItem('countin-tutorial-dismissed', 'true');
-            }
-            welcomeModal.classList.remove('active');
-            // Auto-open camera selector
-            setTimeout(() => this.cameraSelector.show(), 300);
-        });
-
         // Mode buttons
         this.setupModeBtn.addEventListener('click', () => this.setMode('setup'));
         this.countingModeBtn.addEventListener('click', () => this.setMode('counting'));
+
+        // Session actions
+        if (this.saveSessionBtn) {
+            this.saveSessionBtn.addEventListener('click', () => this.saveSession());
+        }
+        if (this.exportDataBtn) {
+            this.exportDataBtn.addEventListener('click', () => this.exportData());
+        }
 
         // Line controls
         this.clearLinesBtn.addEventListener('click', () => this.lineManager.clearLines());
@@ -675,18 +658,6 @@ class CountInApp {
         this.log(`Drawing mode set to: ${mode}`, 'info');
     }
 
-    toggleLineDrawing() {
-        const isDrawing = this.lineManager.isDrawingEnabled;
-
-        if (isDrawing) {
-            this.lineManager.disableDrawing();
-            this.addLineBtn.textContent = 'Add Line';
-        } else {
-            this.lineManager.enableDrawing();
-            this.addLineBtn.textContent = 'Cancel Drawing';
-        }
-    }
-
     async startCounting() {
         if (this.isRunning) return;
 
@@ -745,9 +716,10 @@ class CountInApp {
 
         // Try to create session in background (non-blocking)
         if (!this.currentSession) {
-            const sessionName = this.sessionNameInput?.value || `Session ${new Date().toLocaleString()}`;
+            const sessionName = `Session ${new Date().toLocaleString()}`;
             apiService.createSession(sessionName).then((session) => {
                 this.currentSession = session;
+                this.updateSessionButtons();
                 this.log(`Session created: ${sessionName}`, 'success');
             }).catch((error) => {
                 console.warn('Backend API not available:', error);
@@ -935,6 +907,96 @@ class CountInApp {
         this.outCountEl.textContent = this.counts.out;
     }
 
+    updateSessionButtons() {
+        const hasSession = !!this.currentSession;
+        if (this.saveSessionBtn) this.saveSessionBtn.disabled = !hasSession;
+        if (this.exportDataBtn) this.exportDataBtn.disabled = !hasSession;
+    }
+
+    /** Load the object classes to count from localStorage (default: person). */
+    loadTargetClasses() {
+        try {
+            const saved = localStorage.getItem('countin-target-classes');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length) return parsed;
+            }
+        } catch (e) { /* ignore */ }
+        return ['person'];
+    }
+
+    /** Change the counted classes at runtime and push to the tracker. */
+    setTargetClasses(classes) {
+        this.targetClasses = Array.isArray(classes) && classes.length ? [...classes] : ['person'];
+        try {
+            localStorage.setItem('countin-target-classes', JSON.stringify(this.targetClasses));
+        } catch (e) { /* ignore */ }
+        if (this.tracker) this.tracker.setTargetClasses(this.targetClasses);
+        this.renderTargetClasses();
+        const label = this.targetClasses.join(', ');
+        this.log(`Now counting: ${label}`, 'info');
+    }
+
+    /** Reflect the current target classes in any bound UI controls. */
+    renderTargetClasses() {
+        const els = document.querySelectorAll('[data-target-classes-display]');
+        els.forEach(el => { el.textContent = this.targetClasses.join(', '); });
+        document.querySelectorAll('.class-chip[data-class]').forEach(chip => {
+            chip.classList.toggle('selected', this.targetClasses.includes(chip.dataset.class));
+        });
+    }
+
+    /** Build the COCO class picker modal and wire interactions. */
+    buildClassPicker() {
+        const modal = document.getElementById('class-picker-modal');
+        const chipsEl = document.getElementById('class-chips');
+        const searchInput = document.getElementById('class-search-input');
+        const openBtn = document.getElementById('count-target-btn');
+        const closeBtn = document.getElementById('close-class-picker-btn');
+        if (!modal || !chipsEl) return;
+
+        // Popular first, then the rest, de-duplicated.
+        const ordered = [...new Set([...POPULAR_CLASSES, ...COCO_CLASSES])];
+
+        const render = (filter = '') => {
+            const f = filter.trim().toLowerCase();
+            chipsEl.innerHTML = '';
+            for (const cls of ordered) {
+                if (f && !cls.toLowerCase().includes(f)) continue;
+                const chip = document.createElement('button');
+                chip.className = 'class-chip';
+                chip.dataset.class = cls;
+                chip.type = 'button';
+                const icon = CLASS_ICONS[cls] || '•';
+                chip.innerHTML = `<span class="chip-icon">${icon}</span><span>${cls}</span>`;
+                chip.addEventListener('click', () => this.toggleTargetClass(cls));
+                chipsEl.appendChild(chip);
+            }
+            this.renderTargetClasses();
+        };
+
+        render();
+        searchInput.addEventListener('input', (e) => render(e.target.value));
+
+        const open = () => { modal.classList.add('active'); searchInput.value = ''; render(); setTimeout(() => searchInput.focus(), 50); };
+        const close = () => modal.classList.remove('active');
+        openBtn.addEventListener('click', open);
+        closeBtn.addEventListener('click', close);
+        modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    }
+
+    /** Toggle a single class in the counting target (multi-select). */
+    toggleTargetClass(cls) {
+        const set = new Set(this.targetClasses);
+        if (set.has(cls)) {
+            if (set.size === 1) return; // always keep at least one
+            set.delete(cls);
+        } else {
+            set.add(cls);
+        }
+        this.setTargetClasses([...set]);
+    }
+
     async saveSession() {
         if (!this.currentSession) {
             this.log('No active session to save', 'warning');
@@ -948,9 +1010,7 @@ class CountInApp {
 
             // Reset for new session
             this.currentSession = null;
-            if (this.sessionNameInput) {
-                this.sessionNameInput.value = '';
-            }
+            this.updateSessionButtons();
         } catch (error) {
             this.log('Failed to save session: ' + error.message, 'error');
         }

@@ -18,6 +18,9 @@ export class CameraSelector {
     async init() {
         this.confirmBtn.addEventListener('click', () => this.handleConfirm());
 
+        const cancelBtn = document.getElementById('camera-cancel-btn');
+        if (cancelBtn) cancelBtn.addEventListener('click', () => this.hide());
+
         // Close modal when clicking outside
         this.modal.addEventListener('click', (e) => {
             if (e.target === this.modal) {

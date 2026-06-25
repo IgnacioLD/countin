@@ -840,6 +840,9 @@ body.drawing-active .video-container { cursor: crosshair; }
     border-bottom: 1px solid var(--border);
 }
 .settings-section:last-of-type { border-bottom: none; }
+
+.modal-actions { display: flex; gap: var(--space-3); margin-top: var(--space-4); }
+.modal-actions .btn { flex: 1; }
 .settings-section h3 {
     font-size: var(--text-xs);
     text-transform: uppercase;

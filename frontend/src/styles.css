@@ -1365,6 +1365,17 @@ body.drawing-active .video-container { cursor: crosshair; }
     .camera-connected-main.sidebar-hidden .camera-sidebar,
     .sidebar-hidden .camera-sidebar { transform: translateX(-100%); }
 
+    /* Camera feed fills the screen on mobile (sidebar is an overlay) */
+    .camera-connected-main { grid-template-columns: 1fr; height: calc(100vh - var(--header-height)); }
+    .camera-video-area {
+        min-height: 0;
+        aspect-ratio: auto;
+        height: 100%;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .camera-video-area .video-container { height: 100%; }
+
     /* Keep the toggle tappable above the open sidebar overlay, and float it so it
        stays reachable whether the sidebar is open or closed. */
     .sidebar-toggle-camera {
@@ -1444,7 +1455,7 @@ body.drawing-active .video-container { cursor: crosshair; }
         z-index: 2;
         border-radius: 0;
     }
-    .line-controls {
+    .dashboard-panel .line-controls {
         position: fixed;
         left: var(--space-3);
         right: var(--space-3);

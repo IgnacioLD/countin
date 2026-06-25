@@ -1198,9 +1198,10 @@ body.drawing-active .video-container { cursor: crosshair; }
     align-items: center;
     justify-content: center;
     margin: 0 auto;
-    background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent-strong) 70%, var(--success)) 100%);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 22px;
-    box-shadow: 0 16px 40px -8px color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: var(--shadow-lg);
     animation: float 5s ease-in-out infinite;
 }
 .landing-mark img { width: 50px; height: 50px; }

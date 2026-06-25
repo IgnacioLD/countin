@@ -27,11 +27,26 @@ class Settings(BaseSettings):
     )
 
     def get_cors_origins(self) -> list[str]:
-        """Get CORS origins based on environment"""
-        origins = [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",")]
+        """Get explicit CORS origins based on environment.
 
-        # Filter out wildcard patterns - those are handled by allow_origin_regex
-        origins = [origin for origin in origins if '*' not in origin]
+        Wildcard entries (e.g. https://*.countin.ignacio.tech) are handled by the
+        allow_origin_regex in main.py, so they're dropped here. Empty/malformed
+        entries are filtered and the result is de-duplicated. The known frontend
+        origins are always included as a safety net against env misconfiguration.
+        """
+        raw = [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",")]
+        origins = []
+        for origin in raw:
+            if not origin or "*" in origin:
+                continue
+            origins.append(origin)
+
+        # Always ensure the production frontend origins are allowed, even if the
+        # env var is empty or only contains wildcards.
+        origins.extend([
+            "https://countin.ignacio.tech",
+            "https://preview.countin.ignacio.tech",
+        ])
 
         # Add localhost in development
         if self.ENV == "development":
@@ -39,10 +54,13 @@ class Settings(BaseSettings):
                 "http://localhost",
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "http://localhost:8080"
+                "http://localhost:8080",
+                "http://127.0.0.1:3000",
             ])
 
-        return origins
+        # De-duplicate while preserving order
+        seen = set()
+        return [o for o in origins if not (o in seen or seen.add(o))]
 
     class Config:
         case_sensitive = True

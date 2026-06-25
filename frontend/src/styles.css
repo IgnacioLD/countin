@@ -1434,7 +1434,32 @@ body.drawing-active .video-container { cursor: crosshair; }
 
     .session-actions { flex-direction: column; }
 
-    .video-container { aspect-ratio: auto; height: 45vh; }
+    /* Video-first counting: pin the video so it stays visible while the panel
+       scrolls, and float the draw tools + Start button in a bottom bar. */
+    .video-container {
+        aspect-ratio: auto;
+        position: sticky;
+        top: var(--header-height);
+        height: 55vh;
+        z-index: 2;
+        border-radius: 0;
+    }
+    .line-controls {
+        position: fixed;
+        left: var(--space-3);
+        right: var(--space-3);
+        bottom: 76px;
+        z-index: 7;
+        margin-bottom: 0;
+    }
+    #count-toggle-btn {
+        position: fixed;
+        left: var(--space-3);
+        right: var(--space-3);
+        bottom: var(--space-3);
+        z-index: 7;
+    }
+    .container { padding-bottom: 170px; }
     /* Dashboard stacks below video */
     .dashboard-panel { gap: var(--space-4); }
 

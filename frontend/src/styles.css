@@ -1350,10 +1350,20 @@ body.drawing-active .video-container { cursor: crosshair; }
 @media (max-width: 720px) {
     :root { --header-height: 56px; }
 
-    header { padding: 0 var(--space-4); }
+    header { padding: 0 var(--space-3); gap: var(--space-2); }
+    .header-left { min-width: 0; gap: var(--space-2); }
+    .header-left img[style] { height: 32px !important; }
     .tagline-header { display: none; }
+    .header-controls { gap: var(--space-2); flex-shrink: 0; }
+    /* Collapse to icon-only buttons to fit narrow screens */
+    .mode-indicator { display: none; }
+    #count-target-btn .target-label { display: none; }
+    #count-target-btn { padding: var(--space-2); width: 36px; height: 36px; }
+    #count-target-btn .target-icon { font-size: var(--text-md); }
+    #settings-btn .btn-label { display: none; }
+    #settings-btn { padding: var(--space-2); width: 36px; height: 36px; }
 
-    .container { padding: var(--space-4); }
+    .container { padding: var(--space-3); }
 
     .hub-header { flex-direction: column; align-items: flex-start; }
     .hub-stats-grid { grid-template-columns: 1fr; }
@@ -1375,14 +1385,14 @@ body.drawing-active .video-container { cursor: crosshair; }
     }
 
     .onboarding-content { padding: var(--space-8) var(--space-5); }
-    .mode-card { grid-template-columns: auto 1fr; }
-    .mode-tag { grid-column: 1 / -1; justify-self: start; }
 
     .camera-detail-stats { grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
 
     .session-actions { flex-direction: column; }
 
-    .video-container { aspect-ratio: auto; height: 50vh; }
+    .video-container { aspect-ratio: auto; height: 45vh; }
+    /* Dashboard stacks below video */
+    .dashboard-panel { gap: var(--space-4); }
 }
 
 @media (max-width: 720px) {

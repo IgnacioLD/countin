@@ -5,12 +5,10 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 3000,
     proxy: {
+      // Both REST and WebSocket traffic live under /api/v1
       '/api': {
-        target: 'http://backend:8000',
+        target: process.env.BACKEND_PROXY_TARGET || 'http://backend:8000',
         changeOrigin: true,
-      },
-      '/ws': {
-        target: 'ws://backend:8000',
         ws: true,
       },
     },

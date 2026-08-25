@@ -9,7 +9,6 @@ window.rfdetrAdapter = (() => {
     let model = null;
     let isLoaded = false;
     let isLoading = false;
-    let tfLoaded = false;
 
     /**
      * Add timeout to a promise
@@ -24,55 +23,9 @@ window.rfdetrAdapter = (() => {
     }
 
     /**
-     * Load TensorFlow.js and COCO-SSD from CDN dynamically
-     */
-    async function loadTensorFlow() {
-        if (tfLoaded) return;
-        if (window.tf && window.cocoSsd) {
-            tfLoaded = true;
-            return;
-        }
-
-        console.log('Loading TensorFlow.js libraries...');
-
-        // Load TensorFlow.js with timeout
-        if (!window.tf) {
-            await withTimeout(
-                new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js';
-                    script.async = true;
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                }),
-                30000, // 30 second timeout
-                'TensorFlow.js loading timed out'
-            );
-        }
-
-        // Load COCO-SSD with timeout
-        if (!window.cocoSsd) {
-            await withTimeout(
-                new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js';
-                    script.async = true;
-                    script.onload = resolve;
-                    script.onerror = reject;
-                    document.head.appendChild(script);
-                }),
-                30000, // 30 second timeout
-                'COCO-SSD library loading timed out'
-            );
-        }
-
-        tfLoaded = true;
-        console.log('TensorFlow.js libraries loaded');
-    }
-
-    /**
-     * Load the COCO-SSD model for person detection
+     * Load the COCO-SSD model for person detection.
+     * The libraries are npm dependencies loaded through dynamic import so the
+     * large TensorFlow.js bundle is fetched only when counting starts.
      * @returns {Promise<Object>} Loaded model
      */
     async function loadModel() {
@@ -99,14 +52,12 @@ window.rfdetrAdapter = (() => {
         try {
             isLoading = true;
 
-            // Load TensorFlow.js first if not loaded
-            await loadTensorFlow();
-
             console.log('Loading COCO-SSD model...');
 
-            // Try to load the model from CDN with timeout
+            const cocoSsd = await import('@tensorflow-models/coco-ssd');
+
+            // Try to load the lite model first, fall back to the default one
             try {
-                // Load the model with explicit base URL (60 second timeout)
                 model = await withTimeout(
                     cocoSsd.load({
                         base: 'lite_mobilenet_v2'
@@ -116,7 +67,6 @@ window.rfdetrAdapter = (() => {
                 );
             } catch (e) {
                 console.warn('Failed to load mobilenet model, trying default model', e);
-                // Fallback to default model with timeout
                 model = await withTimeout(
                     cocoSsd.load(),
                     60000,
@@ -135,7 +85,7 @@ window.rfdetrAdapter = (() => {
             // Create a mock model for testing when real model fails
             console.warn('Creating mock detection model for testing');
             model = {
-                detect: async (img) => {
+                detect: async (_img) => {
                     return createMockDetections();
                 }
             };

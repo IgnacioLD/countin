@@ -122,7 +122,7 @@ export class PersonTracker {
                 const iou = this.calculateIoU(this.predictedBox(track), det.bbox);
                 const dist = distance(pred, detCenter);
 
-                let cost = Infinity;
+                let cost;
                 if (iou >= this.minIoU) {
                     cost = 1 - iou;                       // overlap-based: best signal
                 } else if (dist <= this.maxCenterDist) {

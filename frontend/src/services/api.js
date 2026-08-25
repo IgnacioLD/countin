@@ -47,8 +47,14 @@ export class ApiService {
         try {
             const response = await fetch(url, config);
             if (!response.ok) {
-                throw new Error(`API Error: ${response.statusText}`);
+                let detail = `API Error: ${response.statusText}`;
+                try {
+                    const body = await response.json();
+                    if (body.detail) detail = body.detail;
+                } catch { /* body was not JSON */ }
+                throw new Error(detail);
             }
+            if (response.status === 204) return null;
             return await response.json();
         } catch (error) {
             console.error('API request failed:', error);
@@ -146,6 +152,53 @@ export class ApiService {
 
     async getSessionSnapshots(sessionId) {
         return this.request(`/snapshots/session/${sessionId}`);
+    }
+
+    // Hub endpoints
+    async createHub(name) {
+        return this.request('/hubs', {
+            method: 'POST',
+            body: JSON.stringify({ name }),
+        });
+    }
+
+    async getHub(hubId) {
+        return this.request(`/hubs/${hubId}`);
+    }
+
+    async getHubByToken(pairingToken) {
+        return this.request(`/hubs/token/${pairingToken}`);
+    }
+
+    async getHubStats(hubId) {
+        return this.request(`/hubs/${hubId}/stats`);
+    }
+
+    // Camera station endpoints
+    async pairCamera(pairData) {
+        return this.request('/cameras/pair', {
+            method: 'POST',
+            body: JSON.stringify(pairData),
+        });
+    }
+
+    async getHubCameras(hubId) {
+        return this.request(`/cameras/hub/${hubId}`);
+    }
+
+    async getCamera(cameraId) {
+        return this.request(`/cameras/${cameraId}`);
+    }
+
+    async updateCamera(cameraId, data) {
+        return this.request(`/cameras/${cameraId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+        });
+    }
+
+    async deleteCamera(cameraId) {
+        return this.request(`/cameras/${cameraId}`, { method: 'DELETE' });
     }
 }
 

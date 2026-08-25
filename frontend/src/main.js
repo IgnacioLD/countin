@@ -93,6 +93,11 @@ class CountInApp {
         // Hub mode state
         this.hubSession = null;
         this.hubWebSocket = null;
+        this.hubWsPingInterval = null;
+        this.hubWsReconnectTimer = null;
+        this.hubWsRetryCount = 0;
+        this.hubWsIntentionalClose = false;
+        // Camera id -> {id, name, location, total_in, total_out, online}
         this.connectedCameras = new Map();
         this.hubOverviewChart = null;
         this.cameraDetailChart = null;
@@ -104,7 +109,12 @@ class CountInApp {
 
         // Camera mode state
         this.cameraStation = null;
+        this.cameraAuthToken = null;
         this.cameraWebSocket = null;
+        this.cameraWsHeartbeatInterval = null;
+        this.cameraWsReconnectTimer = null;
+        this.cameraWsRetryCount = 0;
+        this.cameraWsIntentionalClose = false;
         this.hubId = null;
         this.cameraListenersSet = false;
 
@@ -143,35 +153,24 @@ class CountInApp {
         const pairingToken = urlParams.get('pair');
 
         if (pairingToken) {
-            this.log('QR code detected, fetching pairing code...', 'info');
+            this.log('QR code detected, validating pairing link...', 'info');
             try {
-                // Fetch hub details using the token
-                const response = await fetch(`${apiService.baseUrl}/hubs/token/${pairingToken}`);
-                if (response.ok) {
-                    const hub = await response.json();
-                    // Switch to camera mode and auto-fill pairing code
-                    this.selectMode('camera');
-
-                    // Auto-fill the pairing code
-                    setTimeout(() => {
-                        const pairingInput = document.getElementById('pairing-code-input');
-                        if (pairingInput) {
-                            pairingInput.value = hub.pairing_code;
-                            this.log('Pairing code auto-filled from QR code', 'success');
-                        }
-                    }, 500);
-
-                    // Clear URL parameter
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    this.log('Initialization complete.', 'success');
-                    return;
-                } else {
-                    this.log('Invalid or expired pairing link', 'error');
-                }
+                const hub = await apiService.getHubByToken(pairingToken);
+                // Defer actual pairing until the user has entered a camera
+                // name on the pairing screen.
+                this.pendingPairingToken = pairingToken;
+                this.pendingHubName = hub.name;
+                this.selectMode('camera');
             } catch (error) {
                 console.error('Failed to fetch pairing info:', error);
-                this.log('Failed to process pairing link', 'error');
+                this.log('This pairing link is invalid or the hub has ended. Enter the hub code manually.', 'error');
+                this.selectMode('camera');
             }
+
+            // Clear the URL parameter so a refresh starts a clean flow
+            window.history.replaceState({}, document.title, window.location.pathname);
+            this.log('Initialization complete.', 'success');
+            return;
         }
 
         // Check for saved app mode
@@ -185,13 +184,23 @@ class CountInApp {
             onboardingModal.classList.remove('active');
             this.isOnboarding = false;
 
-            // Restore the mode
+            // Restore the mode; fall back to onboarding if the saved
+            // session/camera no longer exists so the user is never stranded.
+            let restored = true;
             if (savedMode === 'hub' && savedHubSessionId) {
-                await this.restoreHubSession(savedHubSessionId);
+                restored = await this.restoreHubSession(savedHubSessionId);
             } else if (savedMode === 'camera' && savedCameraStationId) {
-                await this.restoreCameraStation(savedCameraStationId);
+                restored = await this.restoreCameraStation(savedCameraStationId);
             } else if (savedMode === 'standalone') {
                 this.selectMode('standalone');
+            } else {
+                restored = false;
+            }
+
+            if (!restored) {
+                onboardingModal.classList.add('active');
+                this.isOnboarding = true;
+                this.setMode('setup');
             }
         } else {
             // Show onboarding for new users
@@ -482,14 +491,6 @@ class CountInApp {
             }
         });
 
-        // Session controls (only if they exist)
-        if (this.saveSessionBtn) {
-            this.saveSessionBtn.addEventListener('click', () => this.saveSession());
-        }
-        if (this.exportDataBtn) {
-            this.exportDataBtn.addEventListener('click', () => this.exportData());
-        }
-
         // Logo click to go to home
         const logoLink = document.getElementById('logo-link');
         logoLink.addEventListener('click', () => {
@@ -532,7 +533,7 @@ class CountInApp {
         });
     }
 
-    async onCameraSelected(stream, deviceId) {
+    async onCameraSelected(stream, _deviceId) {
         this.video.srcObject = stream;
         this.video.setAttribute('playsinline', '');
 
@@ -933,7 +934,7 @@ class CountInApp {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length) return parsed;
             }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         return ['person'];
     }
 
@@ -942,7 +943,7 @@ class CountInApp {
         this.targetClasses = Array.isArray(classes) && classes.length ? [...classes] : ['person'];
         try {
             localStorage.setItem('countin-target-classes', JSON.stringify(this.targetClasses));
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         if (this.tracker) this.tracker.setTargetClasses(this.targetClasses);
         this.renderTargetClasses();
         const label = this.targetClasses.join(', ');
@@ -1062,26 +1063,17 @@ class CountInApp {
     async initializeHubDashboard() {
         this.log('Initializing Hub Dashboard...', 'info');
 
+        // Reuse the previously created hub instead of spawning a new one
+        // every time this page enters hub mode.
+        const savedHubId = localStorage.getItem('countin-hub-session-id');
+        if (savedHubId) {
+            const restored = await this.restoreHubSession(savedHubId);
+            if (restored) return;
+        }
+
         try {
             // Create a new hub session
-            const hubUrl = `${apiService.baseUrl}/hubs`;
-            console.log('Creating hub at URL:', hubUrl);
-            console.log('apiService.baseUrl:', apiService.baseUrl);
-            console.log('apiService.baseURL:', apiService.baseURL);
-
-            const response = await fetch(hubUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: `Hub ${new Date().toLocaleString()}` })
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Hub creation failed:', errorText);
-                throw new Error('Failed to create hub session');
-            }
-
-            this.hubSession = await response.json();
+            this.hubSession = await apiService.createHub(`Hub ${new Date().toLocaleString()}`);
 
             // Store the actual code but don't display it yet
             this.hubPairingCodeActual = this.hubSession.pairing_code;
@@ -1308,21 +1300,32 @@ class CountInApp {
         }
     }
 
+    buildWebSocketURL(path) {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsHost = (apiService.baseURL || window.location.origin)
+            .replace('http://', '')
+            .replace('https://', '');
+        return `${wsProtocol}//${wsHost}${path}`;
+    }
+
     connectHubWebSocket() {
         if (!this.hubSession) return;
 
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsHost = (apiService.baseURL || window.location.origin).replace('http://', '').replace('https://', '');
-        const wsURL = `${wsProtocol}//${wsHost}/api/v1/ws/hub/${this.hubSession.id}`;
+        this.disconnectHubWebSocket();
 
-        this.hubWebSocket = new WebSocket(wsURL);
+        this.hubWsIntentionalClose = false;
+        this.hubWebSocket = new WebSocket(
+            this.buildWebSocketURL(`/api/v1/ws/hub/${this.hubSession.id}`)
+        );
 
         this.hubWebSocket.onopen = () => {
+            this.hubWsRetryCount = 0;
             this.log('Hub WebSocket connected', 'success');
 
-            // Send ping every 30 seconds
-            setInterval(() => {
-                if (this.hubWebSocket.readyState === WebSocket.OPEN) {
+            clearInterval(this.hubWsPingInterval);
+            // Send ping every 30 seconds to keep the connection alive
+            this.hubWsPingInterval = setInterval(() => {
+                if (this.hubWebSocket?.readyState === WebSocket.OPEN) {
                     this.hubWebSocket.send(JSON.stringify({ type: 'ping' }));
                 }
             }, 30000);
@@ -1331,37 +1334,118 @@ class CountInApp {
         this.hubWebSocket.onmessage = (event) => {
             const message = JSON.parse(event.data);
 
-            if (message.type === 'count_update') {
-                this.handleCameraCountUpdate(message);
+            switch (message.type) {
+                case 'count_update':
+                    this.handleCameraCountUpdate(message);
+                    break;
+                case 'camera_paired':
+                    this.handleCameraPaired(message.camera);
+                    break;
+                case 'camera_online':
+                    this.setCameraOnline(message.camera_id, true);
+                    break;
+                case 'camera_offline':
+                    this.setCameraOnline(message.camera_id, false);
+                    break;
+                default:
+                    // pong and others need no action
+                    break;
             }
         };
 
-        this.hubWebSocket.onerror = (error) => {
+        this.hubWebSocket.onerror = () => {
             this.log('Hub WebSocket error', 'error');
-            console.error('WebSocket error:', error);
         };
 
         this.hubWebSocket.onclose = () => {
-            this.log('Hub WebSocket disconnected', 'warning');
+            clearInterval(this.hubWsPingInterval);
+            this.hubWsPingInterval = null;
+
+            if (this.hubWsIntentionalClose || this.appMode !== 'hub') return;
+
+            this.log('Hub WebSocket disconnected, reconnecting...', 'warning');
+            this.scheduleHubReconnect();
         };
     }
 
+    scheduleHubReconnect() {
+        if (this.hubWsReconnectTimer) return;
+
+        // Exponential backoff, capped at 30s
+        const delay = Math.min(1000 * 2 ** this.hubWsRetryCount, 30000);
+        this.hubWsRetryCount += 1;
+
+        this.hubWsReconnectTimer = setTimeout(() => {
+            this.hubWsReconnectTimer = null;
+            if (this.appMode === 'hub' && this.hubSession) {
+                this.connectHubWebSocket();
+            }
+        }, delay);
+    }
+
+    disconnectHubWebSocket() {
+        this.hubWsIntentionalClose = true;
+        clearTimeout(this.hubWsReconnectTimer);
+        this.hubWsReconnectTimer = null;
+        clearInterval(this.hubWsPingInterval);
+        this.hubWsPingInterval = null;
+
+        if (this.hubWebSocket) {
+            this.hubWebSocket.onclose = null;
+            this.hubWebSocket.close();
+            this.hubWebSocket = null;
+        }
+    }
+
     handleCameraCountUpdate(message) {
-        const { camera_id, data } = message;
-        this.connectedCameras.set(camera_id, data);
+        const { camera_id, counts } = message;
+        if (!counts || typeof counts.total_in !== 'number') return;
 
-        // Update hub stats display
-        this.updateHubStats();
+        const camera = this.connectedCameras.get(camera_id);
+        if (!camera) return; // Unknown camera: the next poll will add it
 
-        // Calculate new totals and update chart only if counts changed
+        camera.total_in = counts.total_in;
+        camera.total_out = counts.total_out;
+        camera.online = true;
+
+        this.renderHubCameras();
+        this.renderHubStats();
+    }
+
+    handleCameraPaired(camera) {
+        if (!camera || this.connectedCameras.has(camera.id)) return;
+
+        this.connectedCameras.set(camera.id, {
+            id: camera.id,
+            name: camera.name,
+            location: camera.location || '',
+            total_in: camera.total_in || 0,
+            total_out: camera.total_out || 0,
+            online: false,
+        });
+
+        this.renderHubCameras();
+        this.renderHubStats();
+        this.log(`Camera paired: ${camera.name}`, 'success');
+    }
+
+    setCameraOnline(cameraId, online) {
+        const camera = this.connectedCameras.get(cameraId);
+        if (!camera || camera.online === online) return;
+
+        camera.online = online;
+        this.renderHubCameras();
+        this.renderHubStats();
+    }
+
+    updateHubChartForTotals() {
         let totalIn = 0;
         let totalOut = 0;
-        for (const [cameraId, cameraData] of this.connectedCameras.entries()) {
-            totalIn += cameraData.total_in || 0;
-            totalOut += cameraData.total_out || 0;
+        for (const [, camera] of this.connectedCameras.entries()) {
+            totalIn += camera.total_in || 0;
+            totalOut += camera.total_out || 0;
         }
 
-        // Only update chart if counts actually changed
         if (totalIn !== this.lastChartUpdate.total_in || totalOut !== this.lastChartUpdate.total_out) {
             this.updateHubChart(totalIn, totalOut);
             this.lastChartUpdate.total_in = totalIn;
@@ -1373,49 +1457,80 @@ class CountInApp {
         if (this.appMode !== 'hub' || !this.hubSession) return;
 
         try {
-            const response = await fetch(`${apiService.baseUrl}/hubs/${this.hubSession.id}/stats`);
-            const stats = await response.json();
-
-            document.getElementById('hub-total-in').textContent = stats.total_in;
-            document.getElementById('hub-total-out').textContent = stats.total_out;
-            document.getElementById('hub-cameras-connected').textContent = stats.connected_cameras;
-
-            // Only update chart if counts changed (someone crossed a line)
-            if (stats.total_in !== this.lastChartUpdate.total_in || stats.total_out !== this.lastChartUpdate.total_out) {
-                this.updateHubChart(stats.total_in, stats.total_out);
-                this.lastChartUpdate.total_in = stats.total_in;
-                this.lastChartUpdate.total_out = stats.total_out;
+            // Camera list is the source for names/status; totals come from the
+            // database which the backend keeps in sync with WebSocket updates.
+            try {
+                this.mergeServerCameras(await apiService.getHubCameras(this.hubSession.id));
+            } catch (error) {
+                console.error('Failed to poll hub cameras:', error);
             }
 
-            // Get camera list
-            const camerasResponse = await fetch(`${apiService.baseUrl}/cameras/hub/${this.hubSession.id}`);
-            const cameras = await camerasResponse.json();
+            try {
+                const stats = await apiService.getHubStats(this.hubSession.id);
+                document.getElementById('hub-cameras-connected').textContent =
+                    stats.connected_cameras;
+            } catch (error) {
+                console.error('Failed to poll hub stats:', error);
+            }
 
-            this.updateCameraList(cameras);
+            this.renderHubStats();
         } catch (error) {
-            console.error('Failed to poll hub stats:', error);
+            console.error('Failed to poll hub data:', error);
         }
 
         // Poll every 5 seconds
         setTimeout(() => this.pollHubStats(), 5000);
     }
 
-    updateHubStats() {
+    mergeServerCameras(cameras) {
+        for (const camera of cameras) {
+            const known = this.connectedCameras.get(camera.id);
+            if (known) {
+                known.name = camera.name;
+                known.location = camera.location || '';
+                known.total_in = camera.total_in;
+                known.total_out = camera.total_out;
+                known.online = camera.is_connected;
+            } else {
+                this.connectedCameras.set(camera.id, {
+                    id: camera.id,
+                    name: camera.name,
+                    location: camera.location || '',
+                    total_in: camera.total_in,
+                    total_out: camera.total_out,
+                    online: camera.is_connected,
+                });
+            }
+        }
+
+        // Drop cameras deleted on the server
+        const serverIds = new Set(cameras.map((c) => c.id));
+        for (const id of [...this.connectedCameras.keys()]) {
+            if (!serverIds.has(id)) this.connectedCameras.delete(id);
+        }
+
+        this.renderHubCameras();
+    }
+
+    renderHubStats() {
         let totalIn = 0;
         let totalOut = 0;
 
-        for (const [cameraId, data] of this.connectedCameras.entries()) {
-            totalIn += data.total_in || 0;
-            totalOut += data.total_out || 0;
+        for (const [, camera] of this.connectedCameras.entries()) {
+            totalIn += camera.total_in || 0;
+            totalOut += camera.total_out || 0;
         }
 
         document.getElementById('hub-total-in').textContent = totalIn;
         document.getElementById('hub-total-out').textContent = totalOut;
-        document.getElementById('hub-cameras-connected').textContent = this.connectedCameras.size;
+        document.getElementById('hub-cameras-connected').textContent =
+            [...this.connectedCameras.values()].filter((c) => c.online).length;
+        this.updateHubChartForTotals();
     }
 
-    updateCameraList(cameras) {
+    renderHubCameras() {
         const cameraList = document.getElementById('hub-camera-list');
+        const cameras = [...this.connectedCameras.values()];
 
         if (cameras.length === 0) {
             cameraList.innerHTML = '<div class="empty-state">No cameras connected yet</div>';
@@ -1438,8 +1553,8 @@ class CountInApp {
             header.appendChild(name);
 
             const status = document.createElement('div');
-            status.className = `camera-status ${camera.is_connected ? 'online' : 'offline'}`;
-            status.innerHTML = `<span class="status-dot"></span>${camera.is_connected ? 'Online' : 'Offline'}`;
+            status.className = `camera-status ${camera.online ? 'online' : 'offline'}`;
+            status.innerHTML = `<span class="status-dot"></span>${camera.online ? 'Online' : 'Offline'}`;
             header.appendChild(status);
 
             cameraCard.appendChild(header);
@@ -1567,15 +1682,7 @@ class CountInApp {
         if (!newName || newName === camera.name) return;
 
         try {
-            const response = await fetch(`${apiService.baseUrl}/cameras/${camera.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newName })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to update camera name');
-            }
+            await apiService.updateCamera(camera.id, { name: newName });
 
             this.log(`Camera renamed to "${newName}"`, 'success');
 
@@ -1593,13 +1700,7 @@ class CountInApp {
         }
 
         try {
-            const response = await fetch(`${apiService.baseUrl}/cameras/${camera.id}`, {
-                method: 'DELETE'
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete camera');
-            }
+            await apiService.deleteCamera(camera.id);
 
             this.log(`Camera "${camera.name}" deleted`, 'success');
 
@@ -1627,22 +1728,46 @@ class CountInApp {
         const cameraNameInput = document.getElementById('camera-name-input');
         const cameraLocationInput = document.getElementById('camera-location-input');
 
-        // Check for pairing token in URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const pairingToken = urlParams.get('pair');
-
-        if (pairingToken) {
-            this.pairCameraWithToken(pairingToken, cameraNameInput.value, cameraLocationInput.value);
-            return;
+        // QR pairing: token was validated at load time; the user just needs
+        // to name the camera before connecting.
+        const pairingNote = document.getElementById('qr-pairing-note');
+        if (this.pendingPairingToken) {
+            if (pairingNote) {
+                pairingNote.textContent = `Scanned hub: ${this.pendingHubName}`;
+                pairingNote.style.display = 'block';
+            }
+            pairingInput.style.display = 'none';
+            cameraNameInput.focus();
+        } else {
+            if (pairingNote) pairingNote.style.display = 'none';
+            pairingInput.style.display = '';
         }
 
         // Only set up event listeners once
         if (!this.cameraListenersSet) {
             pairBtn.addEventListener('click', async () => {
-                const pairingCode = pairingInput.value.trim().toUpperCase();
                 const cameraName = cameraNameInput.value.trim() || 'Camera';
                 const cameraLocation = cameraLocationInput.value.trim();
 
+                if (this.pendingPairingToken) {
+                    const token = this.pendingPairingToken;
+                    const paired = await this.pairCameraWithToken(token, cameraName, cameraLocation);
+                    if (paired) {
+                        this.pendingPairingToken = null;
+                        this.pendingHubName = null;
+                    } else {
+                        // QR token no longer valid: fall back to manual code entry
+                        this.log('QR link no longer valid. Enter the hub code manually.', 'warning');
+                        this.pendingPairingToken = null;
+                        this.pendingHubName = null;
+                        pairingInput.style.display = '';
+                        if (pairingNote) pairingNote.style.display = 'none';
+                        pairingInput.focus();
+                    }
+                    return;
+                }
+
+                const pairingCode = pairingInput.value.trim().toUpperCase();
                 if (pairingCode.length !== 6) {
                     this.log('Pairing code must be 6 characters', 'error');
                     return;
@@ -1671,56 +1796,52 @@ class CountInApp {
 
     async pairCamera(pairingCode, cameraName, cameraLocation) {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/v1/cameras/pair`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    pairing_code: pairingCode,
-                    camera_name: cameraName,
-                    camera_location: cameraLocation
-                })
+            const cameraStation = await apiService.pairCamera({
+                pairing_code: pairingCode,
+                camera_name: cameraName,
+                camera_location: cameraLocation,
             });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Failed to pair camera');
-            }
-
-            this.cameraStation = await response.json();
-            this.hubId = this.cameraStation.hub_session_id;
-
-            // Save to localStorage
-            localStorage.setItem('countin-camera-station-id', this.cameraStation.id);
-
-            this.log('Camera paired successfully!', 'success');
-            this.onCameraPaired();
+            this.onPairSuccess(cameraStation);
+            return true;
         } catch (error) {
             this.log('Failed to pair camera: ' + error.message, 'error');
+            return false;
         }
     }
 
     async pairCameraWithToken(pairingToken, cameraName, cameraLocation) {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/v1/cameras/pair`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    pairing_token: pairingToken,
-                    camera_name: cameraName || 'Camera',
-                    camera_location: cameraLocation
-                })
+            const cameraStation = await apiService.pairCamera({
+                pairing_token: pairingToken,
+                camera_name: cameraName || 'Camera',
+                camera_location: cameraLocation,
             });
-
-            if (!response.ok) throw new Error('Failed to pair camera');
-
-            this.cameraStation = await response.json();
-            this.hubId = this.cameraStation.hub_session_id;
-
-            this.log('Camera paired successfully!', 'success');
-            this.onCameraPaired();
+            this.onPairSuccess(cameraStation);
+            return true;
         } catch (error) {
             this.log('Failed to pair camera: ' + error.message, 'error');
+            return false;
         }
+    }
+
+    onPairSuccess(cameraStation) {
+        this.cameraStation = cameraStation;
+        this.cameraAuthToken = cameraStation.auth_token;
+        this.hubId = cameraStation.hub_session_id;
+
+        // Start from the camera's persisted totals so a re-pair does not
+        // zero out what the hub already recorded.
+        this.counts = {
+            in: cameraStation.total_in || 0,
+            out: cameraStation.total_out || 0,
+            total: (cameraStation.total_in || 0) + (cameraStation.total_out || 0)
+        };
+
+        localStorage.setItem('countin-camera-station-id', this.cameraStation.id);
+        localStorage.setItem('countin-camera-auth-token', this.cameraAuthToken);
+
+        this.log('Camera paired successfully!', 'success');
+        this.onCameraPaired();
     }
 
     async onCameraPaired() {
@@ -1804,77 +1925,147 @@ class CountInApp {
                 console.warn('Camera count display elements not found');
             }
 
-            // Send to hub via WebSocket
-            if (this.cameraWebSocket && this.cameraWebSocket.readyState === WebSocket.OPEN) {
-                this.cameraWebSocket.send(JSON.stringify({
-                    type: 'count_update',
-                    hub_id: this.hubId,
-                    camera_id: this.cameraStation.id,
-                    direction: event.direction,
-                    counts: {
-                        total_in: this.counts.in,
-                        total_out: this.counts.out
-                    }
-                }));
-            }
-
-            // Also update via API
-            try {
-                await fetch(`${apiService.baseURL}/api/v1/cameras/${this.cameraStation.id}/increment?direction=${event.direction}`, {
-                    method: 'POST'
-                });
-            } catch (error) {
-                console.error('Failed to increment camera count:', error);
-            }
+            // Send cumulative totals to the hub; the backend persists them
+            // so a dropped connection is healed by the next update.
+            this.sendCountUpdate(event.direction);
         };
     }
 
     connectCameraWebSocket() {
-        if (!this.cameraStation) return;
+        if (!this.cameraStation || !this.cameraAuthToken) return;
 
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsHost = apiService.baseURL.replace('http://', '').replace('https://', '');
-        const wsURL = `${wsProtocol}//${wsHost}/api/v1/ws/camera/${this.cameraStation.id}`;
+        this.disconnectCameraWebSocket();
 
-        this.cameraWebSocket = new WebSocket(wsURL);
+        this.cameraWsIntentionalClose = false;
+        const url = this.buildWebSocketURL(
+            `/api/v1/ws/camera/${this.cameraStation.id}?token=${encodeURIComponent(this.cameraAuthToken)}`
+        );
+        this.cameraWebSocket = new WebSocket(url);
 
         this.cameraWebSocket.onopen = () => {
+            this.cameraWsRetryCount = 0;
+            this.setCameraConnectionUi(true);
             this.log('Camera WebSocket connected', 'success');
 
-            // Send heartbeat every 30 seconds
-            setInterval(() => {
-                if (this.cameraWebSocket.readyState === WebSocket.OPEN) {
+            // Re-sync totals after a reconnect so the hub is up to date
+            this.sendCountUpdate();
+
+            clearInterval(this.cameraWsHeartbeatInterval);
+            this.cameraWsHeartbeatInterval = setInterval(() => {
+                if (this.cameraWebSocket?.readyState === WebSocket.OPEN) {
                     this.cameraWebSocket.send(JSON.stringify({ type: 'heartbeat' }));
                 }
-            }, 30000);
+            }, 10000);
         };
 
-        this.cameraWebSocket.onerror = (error) => {
+        this.cameraWebSocket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            if (message.type === 'error') {
+                this.log(`Camera WebSocket error from server: ${message.error}`, 'error');
+            }
+            // heartbeat_ack needs no action
+        };
+
+        this.cameraWebSocket.onerror = () => {
             this.log('Camera WebSocket error', 'error');
-            console.error('WebSocket error:', error);
         };
 
-        this.cameraWebSocket.onclose = () => {
-            this.log('Camera WebSocket disconnected', 'warning');
+        this.cameraWebSocket.onclose = (event) => {
+            clearInterval(this.cameraWsHeartbeatInterval);
+            this.cameraWsHeartbeatInterval = null;
+            this.setCameraConnectionUi(false);
+
+            if (this.cameraWsIntentionalClose || this.appMode !== 'camera') return;
+
+            if (event.code === 4401) {
+                // Auth rejected: the stored camera no longer exists (deleted
+                // from the hub). Fall back to the pairing screen.
+                this.log('This camera was removed from the hub. Please pair again.', 'error');
+                this.resetCameraStation();
+                return;
+            }
+
+            this.log('Connection to hub lost, retrying...', 'warning');
+            this.scheduleCameraReconnect();
         };
+    }
+
+    scheduleCameraReconnect() {
+        if (this.cameraWsReconnectTimer) return;
+
+        // Exponential backoff, capped at 30s
+        const delay = Math.min(1000 * 2 ** this.cameraWsRetryCount, 30000);
+        this.cameraWsRetryCount += 1;
+
+        this.cameraWsReconnectTimer = setTimeout(() => {
+            this.cameraWsReconnectTimer = null;
+            if (this.appMode === 'camera' && this.cameraStation) {
+                this.connectCameraWebSocket();
+            }
+        }, delay);
+    }
+
+    disconnectCameraWebSocket() {
+        this.cameraWsIntentionalClose = true;
+        clearTimeout(this.cameraWsReconnectTimer);
+        this.cameraWsReconnectTimer = null;
+        clearInterval(this.cameraWsHeartbeatInterval);
+        this.cameraWsHeartbeatInterval = null;
+
+        if (this.cameraWebSocket) {
+            this.cameraWebSocket.onclose = null;
+            this.cameraWebSocket.close();
+            this.cameraWebSocket = null;
+        }
+    }
+
+    setCameraConnectionUi(connected) {
+        const status = document.querySelector('#camera-connected .connection-status');
+        if (!status) return;
+        status.classList.toggle('connected', connected);
+        status.classList.toggle('disconnected', !connected);
+    }
+
+    sendCountUpdate(direction = null) {
+        if (!this.cameraWebSocket || this.cameraWebSocket.readyState !== WebSocket.OPEN) {
+            return; // Totals re-sync on the next successful connect
+        }
+
+        this.cameraWebSocket.send(JSON.stringify({
+            type: 'count_update',
+            ...(direction ? { direction } : {}),
+            counts: {
+                total_in: this.counts.in,
+                total_out: this.counts.out
+            }
+        }));
+    }
+
+    resetCameraStation() {
+        this.disconnectCameraWebSocket();
+        this.cameraStation = null;
+        this.cameraAuthToken = null;
+        this.hubId = null;
+        localStorage.removeItem('countin-camera-station-id');
+        localStorage.removeItem('countin-camera-auth-token');
+        localStorage.removeItem('countin-app-mode');
+
+        document.getElementById('camera-pairing').style.display = 'block';
+        document.getElementById('camera-connected').style.display = 'none';
     }
 
     async disconnectCamera() {
         if (!this.cameraStation) return;
 
         try {
-            await fetch(`${apiService.baseURL}/api/v1/cameras/${this.cameraStation.id}`, {
-                method: 'DELETE'
-            });
+            await apiService.deleteCamera(this.cameraStation.id);
 
-            if (this.cameraWebSocket) {
-                this.cameraWebSocket.close();
-            }
-
+            this.disconnectCameraWebSocket();
             this.log('Camera disconnected', 'info');
 
             // Reset state
             this.cameraStation = null;
+            this.cameraAuthToken = null;
             this.hubId = null;
 
             // Move main-content back to container
@@ -1896,6 +2087,7 @@ class CountInApp {
 
             // Clear localStorage
             localStorage.removeItem('countin-camera-station-id');
+            localStorage.removeItem('countin-camera-auth-token');
             localStorage.removeItem('countin-app-mode');
 
             // Show pairing screen again
@@ -1908,10 +2100,7 @@ class CountInApp {
 
     async restoreHubSession(hubSessionId) {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/v1/hubs/${hubSessionId}`);
-            if (!response.ok) throw new Error('Hub session not found');
-
-            this.hubSession = await response.json();
+            this.hubSession = await apiService.getHub(hubSessionId);
             this.hubPairingCodeActual = this.hubSession.pairing_code;
             this.hubPairingCodeVisible = false;
 
@@ -1944,21 +2133,33 @@ class CountInApp {
             this.pollHubStats();
 
             this.log('Hub session restored', 'success');
+            return true;
         } catch (error) {
             this.log('Failed to restore hub session: ' + error.message, 'error');
             localStorage.removeItem('countin-hub-session-id');
             localStorage.removeItem('countin-hub-pairing-token');
             localStorage.removeItem('countin-app-mode');
+            return false;
         }
     }
 
     async restoreCameraStation(cameraStationId) {
         try {
-            const response = await fetch(`${apiService.baseURL}/api/v1/cameras/${cameraStationId}`);
-            if (!response.ok) throw new Error('Camera station not found');
-
-            this.cameraStation = await response.json();
+            this.cameraStation = await apiService.getCamera(cameraStationId);
             this.hubId = this.cameraStation.hub_session_id;
+
+            const savedToken = localStorage.getItem('countin-camera-auth-token');
+            if (!savedToken) {
+                throw new Error('No stored camera credentials');
+            }
+            this.cameraAuthToken = savedToken;
+
+            // Resume from the persisted totals so hub and camera stay in sync
+            this.counts = {
+                in: this.cameraStation.total_in || 0,
+                out: this.cameraStation.total_out || 0,
+                total: (this.cameraStation.total_in || 0) + (this.cameraStation.total_out || 0)
+            };
 
             // Show camera view
             const mainContent = document.querySelector('.main-content');
@@ -1980,10 +2181,13 @@ class CountInApp {
             await this.onCameraPaired();
 
             this.log('Camera station restored', 'success');
+            return true;
         } catch (error) {
             this.log('Failed to restore camera station: ' + error.message, 'error');
             localStorage.removeItem('countin-camera-station-id');
+            localStorage.removeItem('countin-camera-auth-token');
             localStorage.removeItem('countin-app-mode');
+            return false;
         }
     }
 

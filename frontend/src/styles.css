@@ -981,6 +981,12 @@ body.drawing-active .video-container { cursor: crosshair; }
     font-weight: 600;
 }
 .connection-status.connected { background: var(--success-soft); color: var(--success); }
+.connection-status.disconnected { background: var(--danger-soft, rgba(244, 67, 54, 0.12)); color: var(--danger, #f44336); }
+.qr-pairing-note {
+    color: var(--primary, #2196f3);
+    font-weight: 600;
+    margin-bottom: var(--space-3);
+}
 .connection-status .status-dot {
     width: 8px;
     height: 8px;

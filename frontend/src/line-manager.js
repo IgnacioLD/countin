@@ -1177,7 +1177,7 @@ export class LineManager {
      * Handle mouse leave event
      * @param {MouseEvent} event - Mouse event
      */
-    handleMouseLeave(event) {
+    handleMouseLeave(_event) {
         if (!this.isDrawing) return;
 
         // Cancel drawing
@@ -1244,7 +1244,7 @@ export class LineManager {
      * Handle touch end event
      * @param {TouchEvent} event - Touch event
      */
-    handleTouchEnd(event) {
+    handleTouchEnd(_event) {
         if (!this.isDrawing) return;
 
         // Check if line is long enough to be valid

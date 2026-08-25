@@ -14,7 +14,7 @@ parameter when opening its WebSocket.
 | Close code | Meaning |
 |---|---|
 | `4400` | Connection replaced by a newer connection for the same camera |
-| `4401` | Unknown camera id or invalid token |
+| `4401` | Unknown camera id, invalid token, or camera deleted by the hub |
 
 The hub a camera belongs to is resolved from the database when the camera
 connects. Any `hub_id` field in client messages is ignored, so a camera cannot
@@ -43,6 +43,7 @@ Malformed JSON, unknown message types, and invalid `count_update` payloads get
 | `{"type": "camera_paired", "camera": {id, name, location, total_in, total_out}}` | A camera was paired to this hub |
 | `{"type": "camera_online", "camera_id": int}` | A camera's WebSocket connected |
 | `{"type": "camera_offline", "camera_id": int}` | A camera's WebSocket disconnected |
+| `{"type": "camera_removed", "camera_id": int}` | A camera was deleted from the hub; its socket was closed with 4401 |
 | `{"type": "count_update", "camera_id": int, "hub_id": int, "direction": "in" \| "out", "counts": {total_in, total_out}}` | Live count relay |
 
 ## Online status

@@ -123,12 +123,20 @@ def update_camera_station(
 
 
 @router.delete("/{camera_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_camera_station(camera_id: int, db: Session = Depends(get_db)):
+async def delete_camera_station(camera_id: int, db: Session = Depends(get_db)):
     """Delete a camera station"""
+    from app.api.v1.endpoints.websocket import CLOSE_UNAUTHORIZED
+
     camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
     if not camera:
         raise HTTPException(status_code=404, detail="Camera station not found")
 
+    hub_id = camera.hub_session_id
     db.delete(camera)
     db.commit()
+
+    # Tell the connected camera its record is gone (its socket handler will
+    # see close code 4401) and let hub dashboards drop it immediately.
+    await hub_manager.close_camera_connection(camera_id, CLOSE_UNAUTHORIZED, "camera deleted")
+    await hub_manager.broadcast_to_hub(hub_id, {"type": "camera_removed", "camera_id": camera_id})
     return None

@@ -13,6 +13,7 @@ Backend -> hub dashboards (``/api/v1/ws/hub/{hub_id}``):
     ``{"type": "camera_paired", "camera": {...}}``
     ``{"type": "camera_online", "camera_id": int}``
     ``{"type": "camera_offline", "camera_id": int}``
+    ``{"type": "camera_removed", "camera_id": int}``
     ``{"type": "count_update", "camera_id": int, "hub_id": int,
        "direction": "in"|"out", "counts": {"total_in": int, "total_out": int}}``
 
@@ -33,7 +34,8 @@ from app.models.camera_station import CameraStation
 
 router = APIRouter()
 
-# Sent to a camera whose id or auth token is unknown/invalid.
+# Sent to a camera whose id or auth token is unknown/invalid, or whose record
+# was deleted while it was connected.
 CLOSE_UNAUTHORIZED = 4401
 # Sent to a camera socket that was replaced by a newer connection.
 CLOSE_REPLACED = 4400
@@ -80,6 +82,15 @@ class HubConnectionManager:
             del self.camera_connections[camera_id]
             return True
         return False
+
+    async def close_camera_connection(self, camera_id: int, code: int, reason: str):
+        """Server-initiated close of a camera's socket (e.g. camera deleted)"""
+        websocket = self.camera_connections.get(camera_id)
+        if websocket is not None:
+            try:
+                await websocket.close(code=code, reason=reason)
+            except Exception:
+                pass
 
     async def broadcast_to_hub(self, hub_id: int, message: dict):
         """Broadcast a message to all dashboards viewing this hub.
@@ -161,7 +172,11 @@ async def camera_websocket_endpoint(websocket: WebSocket, camera_id: int, token:
     db = SessionLocal()
     try:
         camera = get_camera_or_none(db, camera_id)
-        if camera is None or not secrets.compare_digest(camera.auth_token, token):
+        # Compare as bytes: the string form rejects non-ASCII input with a
+        # TypeError, which would turn a bad token into a server error.
+        if camera is None or not secrets.compare_digest(
+            camera.auth_token.encode("utf-8"), token.encode("utf-8")
+        ):
             await websocket.accept()
             await websocket.close(code=CLOSE_UNAUTHORIZED, reason="invalid camera or token")
             return

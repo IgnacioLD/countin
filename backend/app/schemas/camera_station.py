@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CameraStationBase(BaseModel):
@@ -12,7 +12,7 @@ class CameraStationPair(BaseModel):
     """Request to pair a camera with a hub"""
     pairing_code: str | None = None
     pairing_token: str | None = None
-    camera_name: str
+    camera_name: str = Field(min_length=1)
     camera_location: str | None = None
 
 

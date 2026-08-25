@@ -57,6 +57,14 @@ class TestCameraAuthentication:
                 ws.receive_json()
         assert exc_info.value.code == 4401
 
+    def test_non_ascii_token_is_rejected_without_server_error(self, client, hub, camera):
+        with client.websocket_connect(
+            f"/api/v1/ws/camera/{camera['id']}?token=señal-no-válida"
+        ) as ws:
+            with pytest.raises(WebSocketDisconnect) as exc_info:
+                ws.receive_json()
+        assert exc_info.value.code == 4401
+
 
 class TestLifecycleEvents:
     def test_pair_notifies_hub_instantly(self, client, hub):
@@ -84,6 +92,26 @@ class TestLifecycleEvents:
             offline = hub_ws.receive_json()
             assert offline == {"type": "camera_offline", "camera_id": camera["id"]}
             assert wait_until(lambda: get_camera(camera["id"]).is_connected is False)
+
+    def test_delete_camera_notifies_hub_and_closes_camera_ws(self, client, hub, camera):
+        with client.websocket_connect(f"/api/v1/ws/hub/{hub['id']}") as hub_ws:
+            with camera_ws(client, camera) as cam_ws:
+                hub_ws.receive_json()  # camera_online
+
+                resp = client.delete(f"/api/v1/cameras/{camera['id']}")
+                assert resp.status_code == 204
+
+                # The hub learns about the removal immediately
+                assert hub_ws.receive_json()["type"] == "camera_removed"
+
+                # The camera socket is closed with 4401 so the phone falls
+                # back to the pairing screen
+                with pytest.raises(WebSocketDisconnect) as exc_info:
+                    cam_ws.receive_json()
+                assert exc_info.value.code == 4401
+
+            # Once the camera session is torn down, the hub also sees offline
+            assert hub_ws.receive_json()["type"] == "camera_offline"
 
     def test_replaced_connection_keeps_camera_online(self, client, hub, camera):
         with client.websocket_connect(f"/api/v1/ws/hub/{hub['id']}") as hub_ws:

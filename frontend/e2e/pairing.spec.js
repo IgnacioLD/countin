@@ -61,7 +61,9 @@ test.describe('mobile camera station pairing with hub', () => {
         await expect(hubPage.locator('#hub-total-out')).toHaveText('1', { timeout: 3_000 });
 
         // A dropped connection (mobile network blip) must self-heal
-        const connectionStatus = cameraPage.locator('#camera-connected .connection-status');
+        const connectionStatus = cameraPage.locator(
+            '#camera-connected .camera-status-strip .connection-status'
+        );
         await cameraPage.evaluate(() => window.countInApp.cameraWebSocket.close());
         await expect(connectionStatus).toHaveClass(/(^|\s)disconnected($|\s)/, {
             timeout: 5_000,

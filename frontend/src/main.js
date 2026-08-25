@@ -42,6 +42,10 @@ class CountInApp {
         this.areaModeSidebarBtn = document.getElementById('area-mode-sidebar');
         this.lineModeCameraBtn = document.getElementById('line-mode-camera');
         this.areaModeCameraBtn = document.getElementById('area-mode-camera');
+        this.lineModeBarBtn = document.getElementById('line-mode-bar');
+        this.areaModeBarBtn = document.getElementById('area-mode-bar');
+        this.clearLinesBarBtn = document.getElementById('clear-lines-bar');
+        this.countToggleBarBtn = document.getElementById('count-toggle-bar');
 
         // Stats elements
         this.totalCountEl = document.querySelector('#total-count .stat-value');
@@ -126,6 +130,8 @@ class CountInApp {
         this.frameCount = 0;
         // Process every 3rd frame for better performance with high-res cameras
         this.detectionInterval = 3;
+        // Keeps the camera-mode video box matched to the available space
+        this.videoAreaObserver = null;
 
         // Make app globally accessible for onclick handlers
         window.countInApp = this;
@@ -532,6 +538,7 @@ class CountInApp {
 
         // Window resize handler for responsive canvas
         window.addEventListener('resize', () => {
+            this.applyVideoContainerSizing();
             this.resizeCanvases();
         });
     }
@@ -540,15 +547,23 @@ class CountInApp {
         this.video.srcObject = stream;
         this.video.setAttribute('playsinline', '');
 
-        await new Promise((resolve) => {
-            this.video.onloadedmetadata = () => {
-                this.video.play().then(resolve).catch((e) => {
-                    this.log('Error playing video: ' + e.message, 'error');
-                    resolve();
-                });
-            };
-        });
+        // Resolve once metadata is available; guard against the event having
+        // already fired (stale handler would hang the camera picker forever)
+        if (this.video.readyState < 1) {
+            await new Promise((resolve) => {
+                const done = () => resolve();
+                this.video.onloadedmetadata = done;
+                setTimeout(done, 5000);
+            });
+        }
 
+        try {
+            await this.video.play();
+        } catch (e) {
+            this.log('Error playing video: ' + e.message, 'error');
+        }
+
+        this.applyVideoContainerSizing();
         this.resizeCanvases();
 
         const device = cameraService.getSelectedDevice();
@@ -558,10 +573,8 @@ class CountInApp {
         }
 
         // Ensure setup mode is active and drawing is enabled
-        console.log('Setting mode to setup...');
         this.setMode('setup');
-        console.log('Mode set, isDrawingEnabled:', this.lineManager.isDrawingEnabled);
-        this.log('Ready to draw counting lines. Click and drag on the video.', 'info');
+        this.log('Ready to draw counting lines. Drag on the video.', 'info');
     }
 
     setMode(mode) {
@@ -617,19 +630,37 @@ class CountInApp {
         }
     }
 
-    /** Keep the Start/Stop CTA label and state in sync. */
+    /** Keep the Start/Stop CTAs (dashboard panel + camera control bar) in sync. */
     updateCountToggle() {
-        if (!this.countToggleBtn) return;
-        if (this.mode === 'counting') {
-            this.countToggleBtn.textContent = 'Stop Counting';
-            this.countToggleBtn.classList.remove('btn-primary');
-            this.countToggleBtn.classList.add('btn-danger');
-            this.countToggleBtn.disabled = false;
-        } else {
-            this.countToggleBtn.textContent = 'Start Counting';
-            this.countToggleBtn.classList.add('btn-primary');
-            this.countToggleBtn.classList.remove('btn-danger');
-            this.countToggleBtn.disabled = this.lineManager.getLines().length === 0;
+        const counting = this.mode === 'counting';
+        const hasLines = this.lineManager.getLines().length > 0;
+
+        if (this.countToggleBtn) {
+            if (counting) {
+                this.countToggleBtn.textContent = 'Stop Counting';
+                this.countToggleBtn.classList.remove('btn-primary');
+                this.countToggleBtn.classList.add('btn-danger');
+                this.countToggleBtn.disabled = false;
+            } else {
+                this.countToggleBtn.textContent = 'Start Counting';
+                this.countToggleBtn.classList.add('btn-primary');
+                this.countToggleBtn.classList.remove('btn-danger');
+                this.countToggleBtn.disabled = !hasLines;
+            }
+        }
+
+        if (this.countToggleBarBtn) {
+            if (counting) {
+                this.countToggleBarBtn.textContent = 'Stop';
+                this.countToggleBarBtn.classList.remove('btn-primary');
+                this.countToggleBarBtn.classList.add('btn-danger');
+                this.countToggleBarBtn.disabled = false;
+            } else {
+                this.countToggleBarBtn.textContent = 'Start';
+                this.countToggleBarBtn.classList.add('btn-primary');
+                this.countToggleBarBtn.classList.remove('btn-danger');
+                this.countToggleBarBtn.disabled = !hasLines;
+            }
         }
     }
 
@@ -651,22 +682,21 @@ class CountInApp {
     }
 
     setDrawingMode(mode) {
-        // Update button active states (sidebar + camera sidebar; settings buttons may be absent)
-        if (mode === 'line') {
-            this.lineModeBtn?.classList.add('active');
-            this.areaModeBtn?.classList.remove('active');
-            this.lineModeSidebarBtn?.classList.add('active');
-            this.areaModeSidebarBtn?.classList.remove('active');
-            this.lineModeCameraBtn?.classList.add('active');
-            this.areaModeCameraBtn?.classList.remove('active');
-        } else if (mode === 'area') {
-            this.lineModeBtn?.classList.remove('active');
-            this.areaModeBtn?.classList.add('active');
-            this.lineModeSidebarBtn?.classList.remove('active');
-            this.areaModeSidebarBtn?.classList.add('active');
-            this.lineModeCameraBtn?.classList.remove('active');
-            this.areaModeCameraBtn?.classList.add('active');
-        }
+        const on = mode === 'line';
+        const lineButtons = [
+            this.lineModeBtn,
+            this.lineModeSidebarBtn,
+            this.lineModeCameraBtn,
+            this.lineModeBarBtn,
+        ];
+        const areaButtons = [
+            this.areaModeBtn,
+            this.areaModeSidebarBtn,
+            this.areaModeCameraBtn,
+            this.areaModeBarBtn,
+        ];
+        lineButtons.forEach((btn) => btn?.classList.toggle('active', on));
+        areaButtons.forEach((btn) => btn?.classList.toggle('active', !on));
 
         // Set the drawing mode on the line manager
         this.lineManager.setDrawingMode(mode);
@@ -793,9 +823,66 @@ class CountInApp {
             this.lineCanvas.width = width;
             this.lineCanvas.height = height;
             this.lineManager.resizeCanvas();
-
-            console.log('Canvases resized to:', width, 'x', height);
         }
+    }
+
+    /**
+     * Size the video container to the largest box that fits the available
+     * area while preserving the camera's true aspect ratio.
+     *
+     * The container must match the feed exactly: object-fit cropping would
+     * desynchronize the overlay canvases (lines, detections) from the video.
+     */
+    applyVideoContainerSizing() {
+        const container = this.video?.closest('.video-container');
+        if (!container) return;
+
+        if (this.appMode !== 'camera') {
+            // Standalone: container keeps its natural layout; just follow the
+            // feed's aspect ratio so nothing is cropped.
+            container.style.width = '';
+            container.style.height = '';
+            if (this.video.videoWidth && this.video.videoHeight) {
+                container.style.aspectRatio = `${this.video.videoWidth} / ${this.video.videoHeight}`;
+            }
+            return;
+        }
+
+        const area = container.closest('.camera-video-area');
+        if (!area) return;
+
+        const areaRect = area.getBoundingClientRect();
+        if (!areaRect.width || !areaRect.height) return;
+
+        const ratio = (this.video.videoWidth || 16) / (this.video.videoHeight || 9);
+        let w = areaRect.width;
+        let h = w / ratio;
+        if (h > areaRect.height) {
+            h = areaRect.height;
+            w = h * ratio;
+        }
+
+        container.style.width = `${Math.floor(w)}px`;
+        container.style.height = `${Math.floor(h)}px`;
+        container.style.aspectRatio = '';
+    }
+
+    /**
+     * React to size changes of the camera video area (rotation, sidebar
+     * toggle, mobile browser chrome) so the video and canvases stay in sync.
+     */
+    setupVideoAreaObserver() {
+        const area = document.querySelector('.camera-video-area');
+        if (!area) return;
+
+        if (!this.videoAreaObserver) {
+            this.videoAreaObserver = new ResizeObserver(() => {
+                this.applyVideoContainerSizing();
+                this.resizeCanvases();
+            });
+        }
+        this.videoAreaObserver.disconnect();
+        this.videoAreaObserver.observe(area);
     }
 
     createLineItemElement(line, counts) {
@@ -1810,14 +1897,43 @@ class CountInApp {
             const disconnectBtn = document.getElementById('disconnect-camera-btn');
             disconnectBtn.addEventListener('click', () => this.disconnectCamera());
 
-            // Sidebar toggle for camera view
-            const toggleSidebarBtn = document.getElementById('toggle-camera-sidebar');
+            // Details: column collapse on desktop, slide-over sheet on mobile
             const cameraView = document.getElementById('camera-view');
+            const toggleSidebarBtn = document.getElementById('toggle-camera-sidebar');
+            const detailsBtn = document.getElementById('camera-details-btn');
+            const scrim = document.getElementById('camera-sidebar-scrim');
+
+            const isDesktop = () => !window.matchMedia('(max-width: 1024px)').matches;
+
             toggleSidebarBtn.addEventListener('click', () => {
-                cameraView.classList.toggle('sidebar-hidden');
+                const collapsed = cameraView.classList.toggle('sidebar-collapsed');
                 const icon = toggleSidebarBtn.querySelector('.toggle-icon');
-                icon.textContent = cameraView.classList.contains('sidebar-hidden') ? '>' : '<';
-                toggleSidebarBtn.title = cameraView.classList.contains('sidebar-hidden') ? 'Show sidebar' : 'Hide sidebar';
+                icon.textContent = collapsed ? '>' : '<';
+                toggleSidebarBtn.title = collapsed ? 'Show details' : 'Hide details';
+            });
+
+            detailsBtn.addEventListener('click', () => {
+                cameraView.classList.toggle('sidebar-open');
+            });
+
+            scrim.addEventListener('click', () => {
+                cameraView.classList.remove('sidebar-open');
+            });
+
+            // Bottom control bar: draw mode, clear, start/stop counting
+            this.lineModeBarBtn.addEventListener('click', () => this.setDrawingMode('line'));
+            this.areaModeBarBtn.addEventListener('click', () => this.setDrawingMode('area'));
+            this.clearLinesBarBtn.addEventListener('click', () => {
+                if (this.lineManager.getLines().length === 0) return;
+                if (confirm('Clear all lines and areas?')) {
+                    this.lineManager.clearLines();
+                }
+            });
+            this.countToggleBarBtn.addEventListener('click', () => this.toggleCounting());
+
+            // Keep the desktop collapse icon in sync when the viewport changes
+            window.matchMedia('(max-width: 1024px)').addEventListener('change', () => {
+                if (isDesktop()) cameraView.classList.remove('sidebar-open');
             });
 
             this.cameraListenersSet = true;
@@ -1881,28 +1997,17 @@ class CountInApp {
         const cameraVideoArea = document.querySelector('.camera-video-area');
 
         cameraPairing.style.display = 'none';
-        cameraConnected.style.display = 'grid';
-
-        // On small screens the sidebar is a full overlay — start collapsed so the
-        // video is visible first. User can open it with the toggle button.
-        const cameraView = document.getElementById('camera-view');
-        if (cameraView && window.matchMedia('(max-width: 1024px)').matches) {
-            cameraView.classList.add('sidebar-hidden');
-            const toggleBtn = document.getElementById('toggle-camera-sidebar');
-            const icon = toggleBtn?.querySelector('.toggle-icon');
-            if (icon) icon.textContent = '>';
-            if (toggleBtn) toggleBtn.title = 'Show sidebar';
-        }
+        cameraConnected.style.display = 'flex';
 
         // Update display
         document.getElementById('camera-display-name').textContent = this.cameraStation.name;
         document.getElementById('camera-display-location').textContent = this.cameraStation.location || '';
+        document.getElementById('camera-strip-name').textContent = this.cameraStation.name;
 
         // Connect WebSocket
         this.connectCameraWebSocket();
 
         // Move main content (video area) into camera video area
-        mainContent.style.display = 'grid';
         cameraVideoArea.appendChild(mainContent);
 
         // Hide dashboard panel, visualization, and logs (not needed in camera mode)
@@ -1913,8 +2018,22 @@ class CountInApp {
         if (visualizationPanel) visualizationPanel.style.display = 'none';
         if (logContainer) logContainer.style.display = 'none';
 
-        // Adjust main-content to single column layout (no right sidebar)
-        mainContent.style.gridTemplateColumns = '1fr';
+        // Adjust main-content to a centered single-column layout
+        mainContent.style.display = 'flex';
+        mainContent.style.flexDirection = 'column';
+        mainContent.style.alignItems = 'center';
+        mainContent.style.justifyContent = 'center';
+        mainContent.style.flex = '1';
+        mainContent.style.minHeight = '0';
+        mainContent.style.gridTemplateColumns = '';
+
+        // Keep the video container matched to the camera's aspect ratio as
+        // the available space changes (rotation, sidebar, browser chrome).
+        this.setupVideoAreaObserver();
+
+        // The details sheet starts closed on mobile; CSS owns the default
+        this.applyVideoContainerSizing();
+        this.updateCountToggle();
 
         // Start camera and show setup guide
         this.cameraSelector.show();
@@ -2049,10 +2168,10 @@ class CountInApp {
     }
 
     setCameraConnectionUi(connected) {
-        const status = document.querySelector('#camera-connected .connection-status');
-        if (!status) return;
-        status.classList.toggle('connected', connected);
-        status.classList.toggle('disconnected', !connected);
+        document.querySelectorAll('.camera-connection-status').forEach((status) => {
+            status.classList.toggle('connected', connected);
+            status.classList.toggle('disconnected', !connected);
+        });
     }
 
     sendCountUpdate(direction = null) {
@@ -2090,11 +2209,28 @@ class CountInApp {
         localStorage.removeItem('countin-camera-auth-token');
         localStorage.removeItem('countin-app-mode');
 
+        // Stop tracking the video area and reset layout side effects
+        this.videoAreaObserver?.disconnect();
+        const cameraView = document.getElementById('camera-view');
+        cameraView?.classList.remove('sidebar-open', 'sidebar-collapsed');
+
+        const videoContainer = this.video?.closest('.video-container');
+        if (videoContainer) {
+            videoContainer.style.width = '';
+            videoContainer.style.height = '';
+            videoContainer.style.aspectRatio = '';
+        }
+
         // Move main-content back to the container and restore the layout
         const mainContent = document.querySelector('.main-content');
         const container = document.querySelector('.container');
         if (mainContent && container) {
             mainContent.style.display = 'none';
+            mainContent.style.flex = '';
+            mainContent.style.flexDirection = '';
+            mainContent.style.alignItems = '';
+            mainContent.style.justifyContent = '';
+            mainContent.style.minHeight = '';
             mainContent.style.gridTemplateColumns = ''; // Restore default grid
             container.appendChild(mainContent);
         }

@@ -168,16 +168,40 @@
                 </div>
             </div>
 
-            <!-- Connected Screen with Video + Sidebar -->
+            <!-- Connected Screen: video + controls -->
             <div id="camera-connected" class="camera-connected-main" style="display: none;">
-                <!-- Sidebar Toggle Button (outside sidebar) -->
-                <button id="toggle-camera-sidebar" class="btn btn-icon sidebar-toggle-camera" title="Hide sidebar">
+                <!-- Desktop-only floating toggle to collapse the details column -->
+                <button id="toggle-camera-sidebar" class="btn btn-icon sidebar-toggle-camera" title="Hide details">
                     <span class="toggle-icon">&lt;</span>
                 </button>
 
-                <!-- Camera Sidebar -->
+                <!-- Main column: status strip, video area, control bar -->
+                <div class="camera-main-col">
+                    <div class="camera-status-strip">
+                        <div class="connection-status connected camera-connection-status">
+                            <span class="status-dot"></span>
+                            <span id="camera-strip-name">Camera Station</span>
+                        </div>
+                        <button id="camera-details-btn" class="btn btn-secondary btn-small">Details</button>
+                    </div>
+
+                    <!-- Camera feed (video element is moved here while connected) -->
+                    <div class="camera-video-area"></div>
+
+                    <!-- Always-visible primary actions -->
+                    <div class="camera-control-bar" id="camera-control-bar">
+                        <div class="drawing-mode-toggle">
+                            <button id="line-mode-bar" class="btn btn-mode-select active">Line</button>
+                            <button id="area-mode-bar" class="btn btn-mode-select">Area</button>
+                        </div>
+                        <button id="clear-lines-bar" class="btn btn-secondary" title="Clear all lines">Clear</button>
+                        <button id="count-toggle-bar" class="btn btn-primary">Start</button>
+                    </div>
+                </div>
+
+                <!-- Details: column on desktop, slide-over sheet on mobile -->
                 <div class="camera-sidebar">
-                    <div class="connection-status connected">
+                    <div class="connection-status connected camera-connection-status">
                         <span class="status-dot"></span>
                         <span>Connected to Hub</span>
                     </div>
@@ -228,10 +252,7 @@
                     <button id="disconnect-camera-btn" class="btn btn-danger btn-full">Disconnect</button>
                 </div>
 
-                <!-- Camera Video Area -->
-                <div class="camera-video-area">
-                    <!-- Video content will be moved here when camera starts -->
-                </div>
+                <div class="camera-sidebar-scrim" id="camera-sidebar-scrim"></div>
             </div>
         </div>
     </div>

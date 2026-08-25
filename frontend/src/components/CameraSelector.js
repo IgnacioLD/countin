@@ -98,12 +98,13 @@ export class CameraSelector {
             const stream = await cameraService.startCamera(this.selectedDeviceId);
 
             if (this.onCameraSelected) {
-                this.onCameraSelected(stream, this.selectedDeviceId);
+                await this.onCameraSelected(stream, this.selectedDeviceId);
             }
-
-            this.hide();
         } catch (error) {
             alert(`Failed to start camera: ${error.message}`);
+        } finally {
+            // Never leave the picker stuck on screen
+            this.hide();
         }
     }
 }

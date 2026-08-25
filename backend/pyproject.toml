@@ -1,0 +1,24 @@
+[project]
+name = "countin-backend"
+version = "1.0.0"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+timeout = 30
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+# B008: `Depends(...)` in parameter defaults is the canonical FastAPI pattern
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test fixtures access attributes and compare booleans freely
+"tests/*" = ["E712"]
+# conftest sets DATABASE_URL before importing the app (see module docstring)
+"tests/conftest.py" = ["E402"]

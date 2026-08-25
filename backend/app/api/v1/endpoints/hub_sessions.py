@@ -1,11 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
-from app.core.database import get_db
-from app.models.hub_session import HubSession
-from app.models.camera_station import CameraStation
-from app.schemas.hub_session import HubSessionCreate, HubSessionUpdate, HubSessionResponse, HubSessionWithToken, HubSessionStats
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.api.v1.endpoints.camera_stations import mark_stale_cameras_offline
+from app.core.database import get_db
+from app.models.camera_station import CameraStation
+from app.models.hub_session import HubSession, generate_pairing_code, generate_pairing_token
+from app.schemas.hub_session import (
+    HubSessionCreate,
+    HubSessionResponse,
+    HubSessionStats,
+    HubSessionUpdate,
+    HubSessionWithToken,
+)
 
 router = APIRouter()
 
@@ -14,28 +23,34 @@ router = APIRouter()
 @router.post("/", response_model=HubSessionWithToken, status_code=status.HTTP_201_CREATED)
 def create_hub_session(hub_data: HubSessionCreate, db: Session = Depends(get_db)):
     """Create a new hub dashboard session"""
-    from app.models.hub_session import generate_pairing_code, generate_pairing_token
+    # Pairing codes are unique; a random 6-char collision is rare but must
+    # not surface as a 500, so retry with a fresh code.
+    for _ in range(5):
+        hub = HubSession(
+            **hub_data.model_dump(),
+            pairing_code=generate_pairing_code(),
+            pairing_token=generate_pairing_token()
+        )
+        db.add(hub)
+        try:
+            db.commit()
+            db.refresh(hub)
+            return hub
+        except IntegrityError:
+            db.rollback()
 
-    hub = HubSession(
-        **hub_data.dict(),
-        pairing_code=generate_pairing_code(),
-        pairing_token=generate_pairing_token()
-    )
-    db.add(hub)
-    db.commit()
-    db.refresh(hub)
-    return hub
+    raise HTTPException(status_code=503, detail="Could not allocate a pairing code, try again")
 
 
-@router.get("", response_model=List[HubSessionResponse])
-@router.get("/", response_model=List[HubSessionResponse])
+@router.get("", response_model=list[HubSessionResponse])
+@router.get("/", response_model=list[HubSessionResponse])
 def list_hub_sessions(
     skip: int = 0, limit: int = 100, active_only: bool = False, db: Session = Depends(get_db)
 ):
     """List all hub sessions"""
     query = db.query(HubSession)
     if active_only:
-        query = query.filter(HubSession.is_active == True)
+        query = query.filter(HubSession.is_active.is_(True))
     hubs = query.order_by(HubSession.created_at.desc()).offset(skip).limit(limit).all()
     return hubs
 
@@ -78,7 +93,7 @@ def update_hub_session(hub_id: int, hub_data: HubSessionUpdate, db: Session = De
     if not hub:
         raise HTTPException(status_code=404, detail="Hub session not found")
 
-    update_data = hub_data.dict(exclude_unset=True)
+    update_data = hub_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(hub, field, value)
 
@@ -119,6 +134,8 @@ def get_hub_stats(hub_id: int, db: Session = Depends(get_db)):
     hub = db.query(HubSession).filter(HubSession.id == hub_id).first()
     if not hub:
         raise HTTPException(status_code=404, detail="Hub session not found")
+
+    mark_stale_cameras_offline(db)
 
     # Get all cameras for this hub
     cameras = db.query(CameraStation).filter(CameraStation.hub_session_id == hub_id).all()

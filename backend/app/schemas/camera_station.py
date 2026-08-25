@@ -1,26 +1,26 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class CameraStationBase(BaseModel):
     name: str
-    location: Optional[str] = None
+    location: str | None = None
 
 
 class CameraStationPair(BaseModel):
     """Request to pair a camera with a hub"""
-    pairing_code: Optional[str] = None
-    pairing_token: Optional[str] = None
+    pairing_code: str | None = None
+    pairing_token: str | None = None
     camera_name: str
-    camera_location: Optional[str] = None
+    camera_location: str | None = None
 
 
 class CameraStationUpdate(BaseModel):
-    name: Optional[str] = None
-    location: Optional[str] = None
-    is_connected: Optional[bool] = None
-    metadata_json: Optional[dict] = None
+    name: str | None = None
+    location: str | None = None
+    is_connected: bool | None = None
+    metadata_json: dict | None = None
 
 
 class CameraStationResponse(CameraStationBase):
@@ -29,15 +29,14 @@ class CameraStationResponse(CameraStationBase):
     is_connected: bool
     total_in: int
     total_out: int
-    last_heartbeat: Optional[datetime]
+    last_heartbeat: datetime | None
     paired_at: datetime
     updated_at: datetime
-    metadata_json: Optional[dict]
+    metadata_json: dict | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
-class CameraStationHeartbeat(BaseModel):
-    camera_station_id: int
-    is_connected: bool = True
+class CameraStationWithToken(CameraStationResponse):
+    """Pairing response: includes the camera's secret auth token exactly once"""
+    auth_token: str

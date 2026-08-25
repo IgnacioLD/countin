@@ -1,134 +1,133 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, List
-from datetime import datetime
+"""WebSocket endpoints connecting camera stations with hub dashboards.
+
+Protocol summary (see docs/websocket-protocol.md):
+
+Camera -> backend (``/api/v1/ws/camera/{camera_id}?token=...``):
+    ``{"type": "ping"}``
+    ``{"type": "heartbeat"}``
+    ``{"type": "count_update", "direction": "in"|"out",
+       "counts": {"total_in": int, "total_out": int}}``
+
+Backend -> hub dashboards (``/api/v1/ws/hub/{hub_id}``):
+    ``{"type": "pong"}``
+    ``{"type": "camera_paired", "camera": {...}}``
+    ``{"type": "camera_online", "camera_id": int}``
+    ``{"type": "camera_offline", "camera_id": int}``
+    ``{"type": "count_update", "camera_id": int, "hub_id": int,
+       "direction": "in"|"out", "counts": {"total_in": int, "total_out": int}}``
+
+The hub a camera belongs to is always resolved from the database on connect;
+client-supplied ``hub_id`` fields are ignored, so a camera cannot broadcast to
+another hub. Count updates carry cumulative totals which are persisted before
+being relayed, making the database the single source of truth.
+"""
+
 import json
+import secrets
+from datetime import datetime
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
 from app.core.database import SessionLocal
 from app.models.camera_station import CameraStation
 
 router = APIRouter()
 
-
-class ConnectionManager:
-    """Manages WebSocket connections for real-time updates"""
-
-    def __init__(self):
-        self.active_connections: Dict[int, List[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, session_id: int):
-        """Connect a client to a session"""
-        await websocket.accept()
-        if session_id not in self.active_connections:
-            self.active_connections[session_id] = []
-        self.active_connections[session_id].append(websocket)
-
-    def disconnect(self, websocket: WebSocket, session_id: int):
-        """Disconnect a client from a session"""
-        if session_id in self.active_connections:
-            self.active_connections[session_id].remove(websocket)
-            if not self.active_connections[session_id]:
-                del self.active_connections[session_id]
-
-    async def broadcast_to_session(self, session_id: int, message: dict):
-        """Broadcast a message to all clients in a session"""
-        if session_id in self.active_connections:
-            for connection in self.active_connections[session_id]:
-                try:
-                    await connection.send_json(message)
-                except Exception as e:
-                    print(f"Error broadcasting to client: {e}")
+# Sent to a camera whose id or auth token is unknown/invalid.
+CLOSE_UNAUTHORIZED = 4401
+# Sent to a camera socket that was replaced by a newer connection.
+CLOSE_REPLACED = 4400
 
 
 class HubConnectionManager:
     """Manages WebSocket connections between cameras and hub dashboards"""
 
     def __init__(self):
-        # Hub dashboards listening for updates
-        self.hub_dashboards: Dict[int, List[WebSocket]] = {}
-        # Camera stations connected to hubs
-        self.camera_connections: Dict[int, WebSocket] = {}
+        # Hub dashboards listening for updates, by hub id
+        self.hub_dashboards: dict[int, list[WebSocket]] = {}
+        # Camera stations connected, by camera id
+        self.camera_connections: dict[int, WebSocket] = {}
 
     async def connect_hub(self, websocket: WebSocket, hub_id: int):
-        """Connect a hub dashboard"""
+        """Register a hub dashboard"""
         await websocket.accept()
-        if hub_id not in self.hub_dashboards:
-            self.hub_dashboards[hub_id] = []
-        self.hub_dashboards[hub_id].append(websocket)
-
-    async def connect_camera(self, websocket: WebSocket, camera_id: int):
-        """Connect a camera station"""
-        await websocket.accept()
-        self.camera_connections[camera_id] = websocket
+        self.hub_dashboards.setdefault(hub_id, []).append(websocket)
 
     def disconnect_hub(self, websocket: WebSocket, hub_id: int):
-        """Disconnect a hub dashboard"""
-        if hub_id in self.hub_dashboards:
-            self.hub_dashboards[hub_id].remove(websocket)
-            if not self.hub_dashboards[hub_id]:
-                del self.hub_dashboards[hub_id]
+        """Unregister a hub dashboard"""
+        connections = self.hub_dashboards.get(hub_id)
+        if not connections:
+            return
+        if websocket in connections:
+            connections.remove(websocket)
+        if not connections:
+            del self.hub_dashboards[hub_id]
 
-    def disconnect_camera(self, camera_id: int):
-        """Disconnect a camera station"""
-        if camera_id in self.camera_connections:
+    async def connect_camera(self, websocket: WebSocket, camera_id: int):
+        """Register a camera station, replacing any previous connection"""
+        await websocket.accept()
+        previous = self.camera_connections.get(camera_id)
+        self.camera_connections[camera_id] = websocket
+        if previous is not None and previous is not websocket:
+            try:
+                await previous.close(code=CLOSE_REPLACED, reason="replaced")
+            except Exception:
+                pass
+
+    def disconnect_camera(self, websocket: WebSocket, camera_id: int):
+        """Unregister a camera station unless a newer connection took over"""
+        if self.camera_connections.get(camera_id) is websocket:
             del self.camera_connections[camera_id]
+            return True
+        return False
 
     async def broadcast_to_hub(self, hub_id: int, message: dict):
-        """Broadcast a message to all dashboards viewing this hub"""
-        if hub_id in self.hub_dashboards:
-            for connection in self.hub_dashboards[hub_id]:
-                try:
-                    await connection.send_json(message)
-                except Exception as e:
-                    print(f"Error broadcasting to hub dashboard: {e}")
+        """Broadcast a message to all dashboards viewing this hub.
+
+        Sockets that fail to receive are pruned so dead connections do not
+        accumulate.
+        """
+        connections = self.hub_dashboards.get(hub_id)
+        if not connections:
+            return
+        dead: list[WebSocket] = []
+        for connection in list(connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                dead.append(connection)
+        for connection in dead:
+            self.disconnect_hub(connection, hub_id)
 
 
-manager = ConnectionManager()
 hub_manager = HubConnectionManager()
 
 
-@router.websocket("/{session_id}")
-async def websocket_endpoint(websocket: WebSocket, session_id: int):
-    """WebSocket endpoint for real-time session updates"""
-    await manager.connect(websocket, session_id)
-    try:
-        while True:
-            # Receive messages from client
-            data = await websocket.receive_text()
-            message = json.loads(data)
-
-            # Handle different message types
-            if message.get("type") == "ping":
-                await websocket.send_json({"type": "pong"})
-            elif message.get("type") == "event":
-                # Broadcast event to all clients in this session
-                await manager.broadcast_to_session(session_id, message)
-
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, session_id)
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-        manager.disconnect(websocket, session_id)
+def camera_payload(camera: CameraStation) -> dict:
+    """Serializable snapshot of a camera for hub dashboards"""
+    return {
+        "id": camera.id,
+        "name": camera.name,
+        "location": camera.location,
+        "total_in": camera.total_in,
+        "total_out": camera.total_out,
+    }
 
 
-# Helper function to broadcast from API endpoints
-async def broadcast_event(session_id: int, event_type: str, data: dict):
-    """Helper to broadcast events from other endpoints"""
-    message = {"type": event_type, "data": data}
-    await manager.broadcast_to_session(session_id, message)
+def get_camera_or_none(db, camera_id: int) -> CameraStation | None:
+    return db.query(CameraStation).filter(CameraStation.id == camera_id).first()
 
 
 @router.websocket("/hub/{hub_id}")
 async def hub_websocket_endpoint(websocket: WebSocket, hub_id: int):
-    """WebSocket endpoint for hub dashboard to receive camera updates"""
+    """WebSocket endpoint for hub dashboards to receive camera updates"""
     await hub_manager.connect_hub(websocket, hub_id)
     try:
         while True:
-            # Hub dashboards only receive, they don't send
             data = await websocket.receive_text()
             message = json.loads(data)
-
             if message.get("type") == "ping":
                 await websocket.send_json({"type": "pong"})
-
     except WebSocketDisconnect:
         hub_manager.disconnect_hub(websocket, hub_id)
     except Exception as e:
@@ -136,76 +135,129 @@ async def hub_websocket_endpoint(websocket: WebSocket, hub_id: int):
         hub_manager.disconnect_hub(websocket, hub_id)
 
 
-@router.websocket("/camera/{camera_id}")
-async def camera_websocket_endpoint(websocket: WebSocket, camera_id: int):
-    """WebSocket endpoint for camera stations to send count updates"""
-    await hub_manager.connect_camera(websocket, camera_id)
+def is_valid_count_update(message: dict) -> bool:
+    """Validate the shape of a count_update message"""
+    if message.get("type") != "count_update":
+        return False
+    if message.get("direction") not in ("in", "out"):
+        return False
+    counts = message.get("counts")
+    if not isinstance(counts, dict):
+        return False
+    for key in ("total_in", "total_out"):
+        value = counts.get(key)
+        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+            return False
+    return True
 
-    # Mark camera as connected in database
+
+@router.websocket("/camera/{camera_id}")
+async def camera_websocket_endpoint(websocket: WebSocket, camera_id: int, token: str = ""):
+    """WebSocket endpoint for camera stations to send count updates.
+
+    The camera must present the auth token issued at pairing time. Its hub is
+    resolved from the database so counts can only ever reach its own hub.
+    """
     db = SessionLocal()
     try:
-        camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
-        if camera:
-            camera.is_connected = True
-            camera.last_heartbeat = datetime.utcnow()
-            db.commit()
+        camera = get_camera_or_none(db, camera_id)
+        if camera is None or not secrets.compare_digest(camera.auth_token, token):
+            await websocket.accept()
+            await websocket.close(code=CLOSE_UNAUTHORIZED, reason="invalid camera or token")
+            return
+
+        hub_id = camera.hub_session_id
+    finally:
+        db.close()
+
+    await hub_manager.connect_camera(websocket, camera_id)
+
+    # Mark the camera online and notify hub dashboards
+    db = SessionLocal()
+    try:
+        camera = get_camera_or_none(db, camera_id)
+        if camera is None:
+            await websocket.close(code=CLOSE_UNAUTHORIZED, reason="camera deleted")
+            return
+        camera.is_connected = True
+        camera.last_heartbeat = datetime.utcnow()
+        db.commit()
+        await hub_manager.broadcast_to_hub(
+            hub_id, {"type": "camera_online", "camera_id": camera_id}
+        )
     finally:
         db.close()
 
     try:
         while True:
-            # Receive count events from camera
             data = await websocket.receive_text()
-            message = json.loads(data)
+            try:
+                message = json.loads(data)
+            except (json.JSONDecodeError, TypeError):
+                await websocket.send_json({"type": "error", "error": "invalid_json"})
+                continue
 
-            # Broadcast to hub dashboards
-            if message.get("type") == "count_update":
-                # Message should include: camera_id, hub_id, direction, counts
-                hub_id = message.get("hub_id")
-                if hub_id:
-                    await hub_manager.broadcast_to_hub(hub_id, message)
+            msg_type = message.get("type")
 
-            elif message.get("type") == "heartbeat":
-                # Update heartbeat timestamp in database
+            if msg_type == "ping":
+                await websocket.send_json({"type": "pong"})
+
+            elif msg_type == "heartbeat":
                 db = SessionLocal()
                 try:
-                    camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
+                    camera = get_camera_or_none(db, camera_id)
                     if camera:
                         camera.last_heartbeat = datetime.utcnow()
                         db.commit()
                 finally:
                     db.close()
-
-                # Acknowledge heartbeat
                 await websocket.send_json({"type": "heartbeat_ack"})
 
+            elif msg_type == "count_update":
+                if not is_valid_count_update(message):
+                    await websocket.send_json({"type": "error", "error": "invalid_count_update"})
+                    continue
+
+                counts = message["counts"]
+                db = SessionLocal()
+                try:
+                    camera = get_camera_or_none(db, camera_id)
+                    if camera is None:
+                        await websocket.close(code=CLOSE_UNAUTHORIZED, reason="camera deleted")
+                        return
+                    camera.total_in = counts["total_in"]
+                    camera.total_out = counts["total_out"]
+                    db.commit()
+                finally:
+                    db.close()
+
+                await hub_manager.broadcast_to_hub(
+                    hub_id,
+                    {
+                        "type": "count_update",
+                        "camera_id": camera_id,
+                        "hub_id": hub_id,
+                        "direction": message["direction"],
+                        "counts": dict(counts),
+                    },
+                )
+            else:
+                await websocket.send_json({"type": "error", "error": "unknown_message_type"})
+
     except WebSocketDisconnect:
-        hub_manager.disconnect_camera(camera_id)
-        # Mark camera as disconnected in database
-        db = SessionLocal()
-        try:
-            camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
-            if camera:
-                camera.is_connected = False
-                db.commit()
-        finally:
-            db.close()
+        pass
     except Exception as e:
         print(f"Camera WebSocket error: {e}")
-        hub_manager.disconnect_camera(camera_id)
-        # Mark camera as disconnected in database
-        db = SessionLocal()
-        try:
-            camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
-            if camera:
-                camera.is_connected = False
-                db.commit()
-        finally:
-            db.close()
-
-
-# Helper function to broadcast hub updates
-async def broadcast_to_hub(hub_id: int, event_type: str, data: dict):
-    """Helper to broadcast events to hub dashboards"""
-    message = {"type": event_type, "data": data}
-    await hub_manager.broadcast_to_hub(hub_id, message)
+    finally:
+        if hub_manager.disconnect_camera(websocket, camera_id):
+            db = SessionLocal()
+            try:
+                camera = get_camera_or_none(db, camera_id)
+                if camera:
+                    camera.is_connected = False
+                    db.commit()
+            finally:
+                db.close()
+            await hub_manager.broadcast_to_hub(
+                hub_id, {"type": "camera_offline", "camera_id": camera_id}
+            )

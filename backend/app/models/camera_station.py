@@ -1,7 +1,15 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON
+import secrets
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from app.core.database import Base
+
+
+def generate_auth_token():
+    """Generate a per-camera secret used to authenticate its WebSocket"""
+    return secrets.token_urlsafe(32)
 
 
 class CameraStation(Base):
@@ -15,6 +23,10 @@ class CameraStation(Base):
     name = Column(String, nullable=False)
     location = Column(String, nullable=True)
 
+    # Secret credential handed to the camera at pairing time; required to
+    # open its WebSocket connection.
+    auth_token = Column(String, nullable=False, default=generate_auth_token)
+
     # Connection status
     is_connected = Column(Boolean, default=False, nullable=False)
     last_heartbeat = Column(DateTime(timezone=True), nullable=True)
@@ -25,11 +37,15 @@ class CameraStation(Base):
 
     # Timestamps
     paired_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
     # Metadata
     metadata_json = Column(JSON, nullable=True)
 
     # Relationships
     hub_session = relationship("HubSession", back_populates="camera_stations")
-    crossing_events = relationship("CrossingEvent", back_populates="camera_station", cascade="all, delete-orphan")
+    crossing_events = relationship(
+        "CrossingEvent", back_populates="camera_station", cascade="all, delete-orphan"
+    )

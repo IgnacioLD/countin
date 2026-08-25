@@ -2070,17 +2070,49 @@ class CountInApp {
         }));
     }
 
-    resetCameraStation() {
+    teardownCameraStation() {
         this.disconnectCameraWebSocket();
+        this.stopCounting();
+
+        // Release the camera so the privacy indicator turns off on mobile
+        cameraService.stopCamera();
+        this.video.srcObject = null;
+
+        // Lines drawn for the previous camera must not leak into a new pairing
+        this.lineManager.clearLines();
+
         this.cameraStation = null;
         this.cameraAuthToken = null;
         this.hubId = null;
+        this.counts = { total: 0, in: 0, out: 0 };
+
         localStorage.removeItem('countin-camera-station-id');
         localStorage.removeItem('countin-camera-auth-token');
         localStorage.removeItem('countin-app-mode');
 
+        // Move main-content back to the container and restore the layout
+        const mainContent = document.querySelector('.main-content');
+        const container = document.querySelector('.container');
+        if (mainContent && container) {
+            mainContent.style.display = 'none';
+            mainContent.style.gridTemplateColumns = ''; // Restore default grid
+            container.appendChild(mainContent);
+        }
+
+        const dashboardPanel = document.querySelector('.dashboard-panel');
+        const visualizationPanel = document.querySelector('.visualization-panel');
+        const logContainer = document.querySelector('.log-container');
+        if (dashboardPanel) dashboardPanel.style.display = '';
+        if (visualizationPanel) visualizationPanel.style.display = '';
+        if (logContainer) logContainer.style.display = '';
+
+        // Show pairing screen again
         document.getElementById('camera-pairing').style.display = 'block';
         document.getElementById('camera-connected').style.display = 'none';
+    }
+
+    resetCameraStation() {
+        this.teardownCameraStation();
     }
 
     async disconnectCamera() {
@@ -2088,40 +2120,8 @@ class CountInApp {
 
         try {
             await apiService.deleteCamera(this.cameraStation.id);
-
-            this.disconnectCameraWebSocket();
             this.log('Camera disconnected', 'info');
-
-            // Reset state
-            this.cameraStation = null;
-            this.cameraAuthToken = null;
-            this.hubId = null;
-
-            // Move main-content back to container
-            const mainContent = document.querySelector('.main-content');
-            const container = document.querySelector('.container');
-            if (mainContent && container) {
-                mainContent.style.display = 'none';
-                mainContent.style.gridTemplateColumns = ''; // Restore default grid
-                container.appendChild(mainContent);
-            }
-
-            // Restore dashboard panel, visualization, and logs
-            const dashboardPanel = document.querySelector('.dashboard-panel');
-            const visualizationPanel = document.querySelector('.visualization-panel');
-            const logContainer = document.querySelector('.log-container');
-            if (dashboardPanel) dashboardPanel.style.display = '';
-            if (visualizationPanel) visualizationPanel.style.display = '';
-            if (logContainer) logContainer.style.display = '';
-
-            // Clear localStorage
-            localStorage.removeItem('countin-camera-station-id');
-            localStorage.removeItem('countin-camera-auth-token');
-            localStorage.removeItem('countin-app-mode');
-
-            // Show pairing screen again
-            document.getElementById('camera-pairing').style.display = 'block';
-            document.getElementById('camera-connected').style.display = 'none';
+            this.teardownCameraStation();
         } catch (error) {
             this.log('Failed to disconnect camera: ' + error.message, 'error');
         }

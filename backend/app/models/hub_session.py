@@ -1,8 +1,10 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
 import secrets
 import string
+
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 from app.core.database import Base
 
 
@@ -33,11 +35,15 @@ class HubSession(Base):
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
     ended_at = Column(DateTime(timezone=True), nullable=True)
 
     # Metadata
     metadata_json = Column(JSON, nullable=True)
 
     # Relationships
-    camera_stations = relationship("CameraStation", back_populates="hub_session", cascade="all, delete-orphan")
+    camera_stations = relationship(
+        "CameraStation", back_populates="hub_session", cascade="all, delete-orphan"
+    )

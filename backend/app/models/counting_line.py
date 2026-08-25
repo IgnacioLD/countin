@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, JSON
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from app.core.database import Base
 
 
@@ -28,11 +29,15 @@ class CountingLine(Base):
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
 
     # Additional metadata (can store polygon points for areas)
     metadata_json = Column(JSON, nullable=True)
 
     # Relationships
     session = relationship("Session", back_populates="counting_lines")
-    crossing_events = relationship("CrossingEvent", back_populates="line", cascade="all, delete-orphan")
+    crossing_events = relationship(
+        "CrossingEvent", back_populates="line", cascade="all, delete-orphan"
+    )

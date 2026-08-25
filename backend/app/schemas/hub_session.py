@@ -1,22 +1,22 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class HubSessionBase(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class HubSessionCreate(HubSessionBase):
-    metadata_json: Optional[dict] = None
+    metadata_json: dict | None = None
 
 
 class HubSessionUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    is_active: Optional[bool] = None
-    metadata_json: Optional[dict] = None
+    name: str | None = None
+    description: str | None = None
+    is_active: bool | None = None
+    metadata_json: dict | None = None
 
 
 class HubSessionResponse(HubSessionBase):
@@ -25,11 +25,10 @@ class HubSessionResponse(HubSessionBase):
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    ended_at: Optional[datetime]
-    metadata_json: Optional[dict]
+    ended_at: datetime | None
+    metadata_json: dict | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HubSessionWithToken(HubSessionResponse):

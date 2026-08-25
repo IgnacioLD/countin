@@ -1,5 +1,14 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import sessions, lines, events, snapshots, websocket, hub_sessions, camera_stations
+
+from app.api.v1.endpoints import (
+    camera_stations,
+    events,
+    hub_sessions,
+    lines,
+    sessions,
+    snapshots,
+    websocket,
+)
 
 api_router = APIRouter()
 

@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, JSON
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from app.core.database import Base
 
 
@@ -11,7 +12,8 @@ class CrossingEvent(Base):
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(Integer, ForeignKey("sessions.id"), nullable=False)
     line_id = Column(Integer, ForeignKey("counting_lines.id"), nullable=False)
-    camera_station_id = Column(Integer, ForeignKey("camera_stations.id"), nullable=True)  # For hub mode
+    # For hub mode
+    camera_station_id = Column(Integer, ForeignKey("camera_stations.id"), nullable=True)
 
     # Event details
     person_id = Column(String, nullable=False)  # Tracker ID

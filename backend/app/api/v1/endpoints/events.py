@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime
+
 from app.core.database import get_db
-from app.models.crossing_event import CrossingEvent
 from app.models.counting_line import CountingLine
+from app.models.crossing_event import CrossingEvent
 from app.schemas.crossing_event import CrossingEventCreate, CrossingEventResponse
 
 router = APIRouter()
@@ -19,7 +19,7 @@ def create_event(event_data: CrossingEventCreate, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail="Line not found")
 
     # Create event
-    event = CrossingEvent(**event_data.dict())
+    event = CrossingEvent(**event_data.model_dump())
     db.add(event)
 
     # Update line counts
@@ -33,13 +33,13 @@ def create_event(event_data: CrossingEventCreate, db: Session = Depends(get_db))
     return event
 
 
-@router.get("/session/{session_id}", response_model=List[CrossingEventResponse])
+@router.get("/session/{session_id}", response_model=list[CrossingEventResponse])
 def list_session_events(
     session_id: int,
     skip: int = 0,
     limit: int = 1000,
-    line_id: Optional[int] = None,
-    direction: Optional[str] = None,
+    line_id: int | None = None,
+    direction: str | None = None,
     db: Session = Depends(get_db),
 ):
     """List all events for a session"""

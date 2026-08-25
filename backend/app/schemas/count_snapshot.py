@@ -1,13 +1,13 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class CountSnapshotBase(BaseModel):
     total_in: int
     total_out: int
     total_count: int
-    line_counts: Optional[dict] = None
+    line_counts: dict | None = None
 
 
 class CountSnapshotCreate(CountSnapshotBase):
@@ -19,5 +19,4 @@ class CountSnapshotResponse(CountSnapshotBase):
     session_id: int
     timestamp: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

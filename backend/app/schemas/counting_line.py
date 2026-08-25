@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class CountingLineBase(BaseModel):
@@ -15,14 +15,14 @@ class CountingLineBase(BaseModel):
 
 class CountingLineCreate(CountingLineBase):
     session_id: int
-    metadata_json: Optional[dict] = None
+    metadata_json: dict | None = None
 
 
 class CountingLineUpdate(BaseModel):
-    name: Optional[str] = None
-    count_in: Optional[int] = None
-    count_out: Optional[int] = None
-    metadata_json: Optional[dict] = None
+    name: str | None = None
+    count_in: int | None = None
+    count_out: int | None = None
+    metadata_json: dict | None = None
 
 
 class CountingLineResponse(CountingLineBase):
@@ -32,7 +32,6 @@ class CountingLineResponse(CountingLineBase):
     count_out: int
     created_at: datetime
     updated_at: datetime
-    metadata_json: Optional[dict]
+    metadata_json: dict | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -1,6 +1,7 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+
 from app.core.database import get_db
 from app.models.count_snapshot import CountSnapshot
 from app.schemas.count_snapshot import CountSnapshotCreate, CountSnapshotResponse
@@ -11,15 +12,17 @@ router = APIRouter()
 @router.post("/", response_model=CountSnapshotResponse, status_code=status.HTTP_201_CREATED)
 def create_snapshot(snapshot_data: CountSnapshotCreate, db: Session = Depends(get_db)):
     """Create a new count snapshot"""
-    snapshot = CountSnapshot(**snapshot_data.dict())
+    snapshot = CountSnapshot(**snapshot_data.model_dump())
     db.add(snapshot)
     db.commit()
     db.refresh(snapshot)
     return snapshot
 
 
-@router.get("/session/{session_id}", response_model=List[CountSnapshotResponse])
-def list_session_snapshots(session_id: int, skip: int = 0, limit: int = 1000, db: Session = Depends(get_db)):
+@router.get("/session/{session_id}", response_model=list[CountSnapshotResponse])
+def list_session_snapshots(
+    session_id: int, skip: int = 0, limit: int = 1000, db: Session = Depends(get_db)
+):
     """List all snapshots for a session"""
     snapshots = (
         db.query(CountSnapshot)

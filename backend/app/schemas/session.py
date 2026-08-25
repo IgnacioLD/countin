@@ -1,12 +1,12 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class SessionBase(BaseModel):
     name: str
-    description: Optional[str] = None
-    metadata_json: Optional[dict] = None
+    description: str | None = None
+    metadata_json: dict | None = None
 
 
 class SessionCreate(SessionBase):
@@ -14,22 +14,21 @@ class SessionCreate(SessionBase):
 
 
 class SessionUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    is_active: Optional[bool] = None
-    metadata_json: Optional[dict] = None
+    name: str | None = None
+    description: str | None = None
+    is_active: bool | None = None
+    metadata_json: dict | None = None
 
 
 class SessionResponse(SessionBase):
     id: int
     is_active: bool
     started_at: datetime
-    ended_at: Optional[datetime]
+    ended_at: datetime | None
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SessionStats(BaseModel):
@@ -39,4 +38,4 @@ class SessionStats(BaseModel):
     total_count: int
     line_count: int
     event_count: int
-    duration_minutes: Optional[float]
+    duration_minutes: float | None

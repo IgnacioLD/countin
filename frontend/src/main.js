@@ -440,6 +440,16 @@ class CountInApp {
             this.exportDataBtn.addEventListener('click', () => this.exportData());
         }
 
+        // Model load failure: explicit retry, or dismiss and start again later
+        document.getElementById('model-retry-btn')?.addEventListener('click', () => {
+            this.tracker.resetModel();
+            window.rfdetrAdapter.resetLoader();
+            this.tryLoadModel();
+        });
+        document.getElementById('model-close-btn')?.addEventListener('click', () => {
+            this.loadingModal.classList.remove('active');
+        });
+
         // Line controls
         this.clearLinesBtn?.addEventListener('click', () => this.lineManager.clearLines());
         this.clearLinesSidebarBtn.addEventListener('click', () => {
@@ -717,46 +727,7 @@ class CountInApp {
 
         // Initialize the tracking model in the background (non-blocking)
         if (!this.tracker.isModelLoaded) {
-            // Show loading modal (non-blocking)
-            this.loadingModal.classList.add('active');
-            this.loadingStatus.textContent = 'Downloading AI model in background...';
-            this.loadingProgress.style.width = '30%';
-
-            this.log('Loading AI detection model in background...', 'info');
-            console.log('Starting tracker initialization (non-blocking)...');
-
-            // Initialize in background - UI remains responsive
-            this.tracker.initialize().then(() => {
-                this.loadingStatus.textContent = 'Model loaded successfully!';
-                this.loadingProgress.style.width = '100%';
-
-                // Hide loading modal after a brief delay
-                setTimeout(() => {
-                    this.loadingModal.classList.remove('active');
-                }, 500);
-
-                console.log('Tracker initialized, model loaded:', this.tracker.isModelLoaded);
-                this.log('AI detection model loaded successfully', 'success');
-            }).catch((error) => {
-                console.error('Failed to load AI model:', error);
-                this.loadingStatus.textContent = 'Model failed to load, using test mode';
-                this.loadingProgress.style.width = '100%';
-
-                setTimeout(() => {
-                    this.loadingModal.classList.remove('active');
-                }, 1000);
-
-                this.log('AI model failed to load, using synthetic detections for testing', 'warning');
-                window.rfdetrAdapter.enableSyntheticDetections();
-            });
-
-            // Simulate progress updates in background
-            setTimeout(() => {
-                if (!this.tracker.isModelLoaded) {
-                    this.loadingStatus.textContent = 'Initializing TensorFlow.js...';
-                    this.loadingProgress.style.width = '60%';
-                }
-            }, 500);
+            this.tryLoadModel();
         }
 
         // Try to create session in background (non-blocking)
@@ -771,6 +742,58 @@ class CountInApp {
                 this.log('Running in local mode (backend not connected)', 'warning');
             });
         }
+    }
+
+    /**
+     * Load the detection model in the background, surfacing failures.
+     *
+     * A failure must never be papered over with fake detections: counting is
+     * stopped and the user is offered an explicit retry.
+     */
+    tryLoadModel() {
+        const errorActions = document.getElementById('model-error-actions');
+        const errorDetail = document.getElementById('model-error-detail');
+
+        this.loadingModal.classList.add('active');
+        this.loadingModal.querySelector('.loading-content')?.classList.remove('failed');
+        errorActions.style.display = 'none';
+        this.loadingStatus.textContent = 'Downloading AI model in background...';
+        this.loadingProgress.style.width = '30%';
+
+        this.log('Loading AI detection model in background...', 'info');
+
+        this.tracker.initialize().then(() => {
+            this.loadingStatus.textContent = 'Model loaded successfully!';
+            this.loadingProgress.style.width = '100%';
+
+            // Hide loading modal after a brief delay
+            setTimeout(() => {
+                this.loadingModal.classList.remove('active');
+            }, 500);
+
+            this.log('AI detection model loaded successfully', 'success');
+        }).catch((error) => {
+            console.error('Failed to load AI model:', error);
+
+            // Stop the hollow counting loop - no detections without a model
+            this.stopCounting();
+
+            this.loadingModal.querySelector('.loading-content')?.classList.add('failed');
+            this.loadingStatus.textContent = 'Could not load the AI detection model.';
+            this.loadingProgress.style.width = '100%';
+            errorDetail.textContent = `${error.message}. Counting is paused until the model loads.`;
+            errorActions.style.display = 'block';
+
+            this.log('AI model failed to load: ' + error.message, 'error');
+        });
+
+        // Simulate progress updates in background
+        setTimeout(() => {
+            if (!this.tracker.isModelLoaded) {
+                this.loadingStatus.textContent = 'Initializing TensorFlow.js...';
+                this.loadingProgress.style.width = '60%';
+            }
+        }, 500);
     }
 
     stopCounting() {
@@ -794,7 +817,9 @@ class CountInApp {
         try {
             this.frameCount++;
 
-            if (this.frameCount % this.detectionInterval === 0) {
+            // Detection runs only once the model is ready; the loop keeps
+            // the video alive while the model downloads in the background.
+            if (this.frameCount % this.detectionInterval === 0 && this.tracker.isModelLoaded) {
                 const result = await this.tracker.processFrame(this.video, this.detectionCanvas);
 
                 // Log detection info every 30 frames (about once per second)

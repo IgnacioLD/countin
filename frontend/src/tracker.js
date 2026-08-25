@@ -48,14 +48,18 @@ export class PersonTracker {
         return true;
     }
 
+    /** Clear a failed initialization so a retry can load the model again. */
+    resetModel() {
+        this.model = null;
+        this.isModelLoaded = false;
+    }
+
     async processFrame(videoElement, canvas = null) {
-        if (!this.isModelLoaded && !window.useSyntheticDetections) {
+        if (!this.isModelLoaded) {
             throw new Error('Tracker model not initialized. Call initialize() first.');
         }
 
-        let detections = window.useSyntheticDetections
-            ? this.generateSyntheticDetections(canvas)
-            : await this.detectPeople(videoElement);
+        const detections = await this.detectPeople(videoElement);
 
         const result = this.updateTracks(detections);
 
@@ -280,63 +284,6 @@ export class PersonTracker {
         }
         this.tracks = currentTracks;
         return { tracks: this.tracks, updated, disappeared };
-    }
-
-    /* ---------------- Synthetic (test) detections ---------------- */
-
-    generateSyntheticDetections(canvas) {
-        const width = canvas ? canvas.width : 640;
-        const height = canvas ? canvas.height : 480;
-        if (Math.random() > 0.3) {
-            const existing = Object.values(this.tracks);
-            if (existing.length === 0) return this.generateNewSyntheticDetections(width, height, 1);
-            return existing.map(track => {
-                const last = track.history[track.history.length - 1];
-                if (!last) return null;
-                let xMove = (Math.random() - 0.5) * 5;
-                let yMove = (Math.random() - 0.5) * 5;
-                if (track.isMovingAcross) {
-                    const cx = width / 2;
-                    const d = last.bbox[0] - cx;
-                    if (Math.abs(d) < 50) xMove = d < 0 ? 15 : -15;
-                    else xMove = d < 0 ? 8 : -8;
-                    yMove = (Math.random() - 0.5) * 3;
-                }
-                const nx = Math.max(0, Math.min(width - last.bbox[2], last.bbox[0] + xMove));
-                const ny = Math.max(0, Math.min(height - last.bbox[3], last.bbox[1] + yMove));
-                return {
-                    class: 'person', score: 0.9,
-                    bbox: [nx, ny, last.bbox[2], last.bbox[3]],
-                    isMovingAcross: track.isMovingAcross,
-                };
-            }).filter(Boolean);
-        }
-        return this.generateNewSyntheticDetections(width, height, Math.floor(Math.random() * 2) + 1);
-    }
-
-    generateNewSyntheticDetections(width, height, count) {
-        const detections = [];
-        const cx = width / 2;
-        for (let i = 0; i < count; i++) {
-            const shouldCross = Math.random() > 0.5;
-            let x;
-            if (shouldCross) {
-                x = Math.random() > 0.5 ? cx - 200 - Math.random() * 100 : cx + 100 + Math.random() * 100;
-            } else {
-                x = Math.random() * (width - 200);
-                if (Math.abs(x - cx) < 100) x = x < cx ? x - 100 : x + 100;
-            }
-            const bw = Math.random() * 50 + 50;
-            const bh = Math.random() * 100 + 100;
-            const y = Math.random() * (height - bh - 50) + 50;
-            detections.push({
-                class: 'person',
-                score: 0.8 + Math.random() * 0.2,
-                bbox: [Math.max(0, Math.min(width - bw, x)), y, bw, bh],
-                isMovingAcross: shouldCross,
-            });
-        }
-        return detections;
     }
 
     /* ---------------- Visualization ---------------- */

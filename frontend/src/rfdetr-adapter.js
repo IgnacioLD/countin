@@ -1,14 +1,17 @@
 /**
- * RF-DETR Adapter for Browser
+ * Detection adapter around TensorFlow.js COCO-SSD.
  *
- * This adapter provides an interface similar to RF-DETR but using TensorFlow.js
- * with COCO-SSD model for person detection in the browser.
+ * There is deliberately NO fallback when the model cannot be loaded: a
+ * silent mock would fabricate people and corrupt counts in production.
+ * Load failures propagate to the caller, which surfaces them in the UI
+ * and offers a retry.
  */
 window.rfdetrAdapter = (() => {
     // Private state
     let model = null;
     let isLoaded = false;
     let isLoading = false;
+    let loadFailed = false;
 
     /**
      * Add timeout to a promise
@@ -23,13 +26,13 @@ window.rfdetrAdapter = (() => {
     }
 
     /**
-     * Load the COCO-SSD model for person detection.
+     * Load the COCO-SSD model.
      * The libraries are npm dependencies loaded through dynamic import so the
      * large TensorFlow.js bundle is fetched only when counting starts.
      * @returns {Promise<Object>} Loaded model
+     * @throws when the model weights cannot be downloaded
      */
     async function loadModel() {
-        // If already loaded, return the model
         if (isLoaded && model) {
             return model;
         }
@@ -49,75 +52,60 @@ window.rfdetrAdapter = (() => {
             });
         }
 
+        isLoading = true;
+        loadFailed = false;
         try {
-            isLoading = true;
-
-            console.log('Loading COCO-SSD model...');
-
+            // Import the full tfjs package first: it registers the WebGL
+            // backend, which the coco-ssd package alone does not.
+            const tf = await import('@tensorflow/tfjs');
             const cocoSsd = await import('@tensorflow-models/coco-ssd');
+            await tf.ready();
 
-            // Try to load the lite model first, fall back to the default one
-            try {
-                model = await withTimeout(
-                    cocoSsd.load({
-                        base: 'lite_mobilenet_v2'
-                    }),
-                    60000,
-                    'Model loading timed out after 60 seconds'
-                );
-            } catch (e) {
-                console.warn('Failed to load mobilenet model, trying default model', e);
-                model = await withTimeout(
-                    cocoSsd.load(),
-                    60000,
-                    'Default model loading timed out after 60 seconds'
-                );
+            // Prefer the self-hosted lite model (served from this origin, so
+            // it works even where the model CDN is blocked or slow), then
+            // fall back to the CDN variants.
+            const attempts = [
+                () => cocoSsd.load({ modelUrl: '/models/ssdlite/model.json' }),
+                () => cocoSsd.load({ base: 'lite_mobilenet_v2' }),
+                () => cocoSsd.load(),
+            ];
+
+            let lastError = null;
+            for (const attempt of attempts) {
+                try {
+                    model = await withTimeout(
+                        attempt(),
+                        60000,
+                        'Model loading timed out after 60 seconds'
+                    );
+                    break;
+                } catch (e) {
+                    lastError = e;
+                    console.warn('Model source failed, trying next source', e.message);
+                }
             }
+            if (!model) throw lastError;
 
             isLoaded = true;
-            isLoading = false;
             console.log('COCO-SSD model loaded successfully');
             return model;
         } catch (error) {
+            loadFailed = true;
+            throw error;
+        } finally {
             isLoading = false;
-            console.error('Failed to load COCO-SSD model:', error);
-
-            // Create a mock model for testing when real model fails
-            console.warn('Creating mock detection model for testing');
-            model = {
-                detect: async (_img) => {
-                    return createMockDetections();
-                }
-            };
-            isLoaded = true;
-
-            return model;
         }
     }
 
     /**
-     * Create mock detections when model fails to load
-     * @returns {Array} Array of mock person detections
+     * Clear a failed load so the next loadModel() attempt starts fresh.
+     * Used by the retry action in the model error UI.
      */
-    function createMockDetections() {
-        // Create 0-3 person detections
-        const count = Math.floor(Math.random() * 4);
-        const detections = [];
-
-        for (let i = 0; i < count; i++) {
-            detections.push({
-                bbox: [
-                    Math.random() * 600, // x
-                    Math.random() * 400, // y
-                    50 + Math.random() * 50, // width
-                    100 + Math.random() * 100 // height
-                ],
-                class: 'person',
-                score: 0.7 + Math.random() * 0.3 // 0.7-1.0 confidence
-            });
-        }
-
-        return detections;
+    function resetLoader() {
+        if (isLoading) return;
+        model = null;
+        isLoaded = false;
+        loadFailed = false;
     }
 
     /**
@@ -128,6 +116,10 @@ window.rfdetrAdapter = (() => {
      */
     async function detectObjects(input, classes) {
         if (!isLoaded) {
+            // A previous load failed: report no detections instead of
+            // hammering the network with per-frame retries. The error UI
+            // owns the retry.
+            if (loadFailed) return [];
             await loadModel();
         }
 
@@ -148,67 +140,13 @@ window.rfdetrAdapter = (() => {
         }
     }
 
-    /**
-     * Detect people in an image or video frame (backwards compatible)
-     * @param {HTMLImageElement|HTMLVideoElement} input - Input element
-     * @returns {Promise<Array>} Array of person detections
-     */
-    async function detectPeople(input) {
-        const predictions = await detectObjects(input, ['person']);
-        return predictions.map(p => ({ ...p, class: 'person' }));
-    }
-
-    /**
-     * Map a detection to an image overlay
-     * @param {Object} detection - Detection object
-     * @param {HTMLCanvasElement} canvas - Canvas element
-     * @returns {Object} Mapped detection with pixel coordinates
-     */
-    function mapToViewport(detection, canvas) {
-        const [x, y, width, height] = detection.bbox;
-
-        // Canvas size
-        const canvasWidth = canvas.width;
-        const canvasHeight = canvas.height;
-
-        // Map to canvas coordinates
-        return {
-            ...detection,
-            bbox: [
-                x * canvasWidth,
-                y * canvasHeight,
-                width * canvasWidth,
-                height * canvasHeight
-            ]
-        };
-    }
-
-    // Enable synthetic detections flag
-    window.useSyntheticDetections = false;
-
     // Public API
     return {
         loadModel,
-        detectPeople,
+        resetLoader,
         detectObjects,
-        mapToViewport,
-
-        // Toggle synthetic detections
-        enableSyntheticDetections() {
-            window.useSyntheticDetections = true;
-            console.log('Synthetic detections enabled');
-        },
-
-        disableSyntheticDetections() {
-            window.useSyntheticDetections = false;
-            console.log('Synthetic detections disabled');
-        },
 
         // State inspection for debugging
-        getState: () => ({
-            isLoaded,
-            isLoading,
-            usingSyntheticDetections: window.useSyntheticDetections
-        })
+        getState: () => ({ isLoaded, isLoading, loadFailed })
     };
 })();

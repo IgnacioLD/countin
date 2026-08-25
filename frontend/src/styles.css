@@ -1205,6 +1205,20 @@ body.drawing-active .video-container { cursor: crosshair; }
     width: 0%;
 }
 
+/* Model load failure: swap the spinner for the error actions */
+.loading-content.failed .loading-spinner { display: none; }
+.model-error-actions { margin-top: var(--space-4); }
+.model-error-detail {
+    font-size: var(--text-sm);
+    color: var(--danger, #f44336);
+    word-break: break-word;
+}
+.model-error-buttons {
+    display: flex;
+    gap: var(--space-3);
+    justify-content: center;
+}
+
 .loading-info { font-size: var(--text-xs); color: var(--text-tertiary); }
 
 /* ---------- QR ---------- */

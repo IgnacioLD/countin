@@ -102,7 +102,7 @@ SERVICE_FQDN_BACKEND=api.countin.ignacio.tech
 3. **Deploy:**
    - Use `docker-compose.yml` in Coolify
    - Services will build and start automatically
-   - Database tables are created on first backend startup
+   - Database migrations run on first backend startup
 
 ### Local Development
 
@@ -175,17 +175,20 @@ docker-compose up -d
 - `GET /api/v1/hubs/{hub_id}/stats` - Get aggregated hub statistics
 
 ### Camera Stations
-- `POST /api/v1/cameras/pair` - Pair camera with hub
+- `POST /api/v1/cameras/pair` - Pair camera with hub (returns a one-time `auth_token`)
 - `GET /api/v1/cameras/hub/{hub_id}` - List hub cameras
 - `GET /api/v1/cameras/{camera_id}` - Get camera details
 - `PATCH /api/v1/cameras/{camera_id}` - Update camera (e.g., rename)
 - `DELETE /api/v1/cameras/{camera_id}` - Delete camera
-- `POST /api/v1/cameras/heartbeat` - Update camera connection status
-- `POST /api/v1/cameras/{camera_id}/increment` - Increment count
+
+Counts are reported over the camera WebSocket (see
+[docs/websocket-protocol.md](docs/websocket-protocol.md)).
 
 ### WebSocket
 - `WS /api/v1/ws/hub/{hub_id}` - Hub dashboard real-time updates
-- `WS /api/v1/ws/camera/{camera_id}` - Camera station connection
+- `WS /api/v1/ws/camera/{camera_id}?token={auth_token}` - Camera station connection
+
+Message formats are documented in [docs/websocket-protocol.md](docs/websocket-protocol.md).
 
 Full interactive API documentation available at `/docs` when running.
 
@@ -203,7 +206,8 @@ Full interactive API documentation available at `/docs` when running.
 
 ### Database
 
-PostgreSQL tables are automatically created on backend startup using SQLAlchemy migrations.
+Database schema is managed with Alembic migrations (applied automatically on
+backend startup via `alembic upgrade head`).
 
 Tables:
 - `sessions` - Counting sessions

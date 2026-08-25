@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.v1.endpoints.websocket import camera_payload, hub_manager
+from app.api.v1.endpoints.websocket import CLOSE_UNAUTHORIZED, camera_payload, hub_manager
 from app.core.database import get_db
 from app.models.camera_station import CameraStation
 from app.models.hub_session import HubSession
@@ -25,7 +25,9 @@ def mark_stale_cameras_offline(db: Session) -> None:
     """Flag cameras with stale heartbeats as offline.
 
     Called from read endpoints the hub dashboard polls, so phantom "online"
-    cameras disappear without any background task.
+    cameras disappear without any background task. A camera whose websocket
+    is still registered is skipped: mobile browsers throttle background
+    timers, which can stall the heartbeat of a perfectly healthy connection.
     """
     threshold = datetime.utcnow() - HEARTBEAT_STALE_AFTER
     stale = (
@@ -36,9 +38,13 @@ def mark_stale_cameras_offline(db: Session) -> None:
         )
         .all()
     )
+    changed = False
     for camera in stale:
+        if camera.id in hub_manager.camera_connections:
+            continue
         camera.is_connected = False
-    if stale:
+        changed = True
+    if changed:
         db.commit()
 
 
@@ -125,8 +131,6 @@ def update_camera_station(
 @router.delete("/{camera_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_camera_station(camera_id: int, db: Session = Depends(get_db)):
     """Delete a camera station"""
-    from app.api.v1.endpoints.websocket import CLOSE_UNAUTHORIZED
-
     camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
     if not camera:
         raise HTTPException(status_code=404, detail="Camera station not found")

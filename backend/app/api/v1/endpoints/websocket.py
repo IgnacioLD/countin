@@ -242,6 +242,8 @@ async def camera_websocket_endpoint(websocket: WebSocket, camera_id: int, token:
                         return
                     camera.total_in = counts["total_in"]
                     camera.total_out = counts["total_out"]
+                    # A count proves the connection is alive
+                    camera.last_heartbeat = datetime.utcnow()
                     db.commit()
                 finally:
                     db.close()

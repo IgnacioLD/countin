@@ -100,21 +100,26 @@ class TestCameraManagement:
 
 
 class TestStaleCameras:
-    def test_stale_heartbeat_marks_camera_offline(self, client, hub, camera):
-        from datetime import datetime, timedelta
-
+    @staticmethod
+    def _set_connection_state(camera_id, is_connected, heartbeat):
         from app.core.database import SessionLocal
         from app.models.camera_station import CameraStation
 
-        camera_id = camera["id"]
         db = SessionLocal()
         try:
             db_camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
-            db_camera.is_connected = True
-            db_camera.last_heartbeat = datetime.utcnow() - timedelta(minutes=5)
+            db_camera.is_connected = is_connected
+            db_camera.last_heartbeat = heartbeat
             db.commit()
         finally:
             db.close()
+
+    def test_stale_heartbeat_marks_camera_offline(self, client, hub, camera):
+        from datetime import datetime, timedelta
+
+        self._set_connection_state(
+            camera["id"], True, datetime.utcnow() - timedelta(minutes=5)
+        )
 
         cams = client.get(f"/api/v1/cameras/hub/{hub['id']}").json()
         assert cams[0]["is_connected"] is False
@@ -122,18 +127,52 @@ class TestStaleCameras:
     def test_fresh_heartbeat_stays_online(self, client, hub, camera):
         from datetime import datetime
 
-        from app.core.database import SessionLocal
-        from app.models.camera_station import CameraStation
-
-        camera_id = camera["id"]
-        db = SessionLocal()
-        try:
-            db_camera = db.query(CameraStation).filter(CameraStation.id == camera_id).first()
-            db_camera.is_connected = True
-            db_camera.last_heartbeat = datetime.utcnow()
-            db.commit()
-        finally:
-            db.close()
+        self._set_connection_state(camera["id"], True, datetime.utcnow())
 
         cams = client.get(f"/api/v1/cameras/hub/{hub['id']}").json()
         assert cams[0]["is_connected"] is True
+
+    def test_stale_camera_with_live_websocket_stays_online(self, client, hub, camera):
+        """A throttled heartbeat (phone in background) must not flag a
+        camera offline while its websocket is still registered."""
+        from datetime import datetime, timedelta
+
+        with client.websocket_connect(
+            f"/api/v1/ws/camera/{camera['id']}?token={camera['auth_token']}"
+        ):
+            self._set_connection_state(
+                camera["id"], True, datetime.utcnow() - timedelta(minutes=5)
+            )
+
+            cams = client.get(f"/api/v1/cameras/hub/{hub['id']}").json()
+            assert cams[0]["is_connected"] is True
+
+    def test_count_update_refreshes_heartbeat(self, client, hub, camera):
+        from datetime import datetime, timedelta
+
+        from app.core.database import SessionLocal
+        from app.models.camera_station import CameraStation
+        from tests.conftest import wait_until
+
+        def get_heartbeat():
+            db = SessionLocal()
+            try:
+                row = (
+                    db.query(CameraStation).filter(CameraStation.id == camera["id"]).first()
+                )
+                return row.last_heartbeat
+            finally:
+                db.close()
+
+        with client.websocket_connect(
+            f"/api/v1/ws/camera/{camera['id']}?token={camera['auth_token']}"
+        ) as ws:
+            old = datetime.utcnow() - timedelta(minutes=5)
+            self._set_connection_state(camera["id"], True, old)
+            assert get_heartbeat() == old
+
+            ws.send_json(
+                {"type": "count_update", "direction": "in",
+                 "counts": {"total_in": 1, "total_out": 0}}
+            )
+            assert wait_until(lambda: get_heartbeat() is not None and get_heartbeat() > old)

@@ -23,6 +23,22 @@ from app.main import app  # noqa: E402 (imports register models and routes)
 API = "/api/v1"
 
 
+def wait_until(condition, timeout=5.0):
+    """Poll ``condition`` until it is truthy or ``timeout`` elapses.
+
+    WebSocket handlers run asynchronously in the TestClient portal thread, so
+    database side effects of a sent message need a moment to land.
+    """
+    import time
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if condition():
+            return True
+        time.sleep(0.05)
+    return condition()
+
+
 @pytest.fixture(autouse=True)
 def fresh_db():
     """Give every test a clean schema."""

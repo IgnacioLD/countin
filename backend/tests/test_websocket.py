@@ -1,12 +1,11 @@
 """WebSocket flow between camera stations and hub dashboards."""
 
-import time
-
 import pytest
 from starlette.websockets import WebSocketDisconnect
 
 from app.core.database import SessionLocal
 from app.models.camera_station import CameraStation
+from tests.conftest import wait_until
 
 
 def get_camera(camera_id):
@@ -20,15 +19,6 @@ def get_camera(camera_id):
 def camera_ws(client, camera, token=None):
     token = token if token is not None else camera["auth_token"]
     return client.websocket_connect(f"/api/v1/ws/camera/{camera['id']}?token={token}")
-
-
-def wait_until(condition, timeout=5.0):
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if condition():
-            return True
-        time.sleep(0.05)
-    return condition()
 
 
 def test_hub_ws_answers_ping(client, hub):

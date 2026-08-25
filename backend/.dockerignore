@@ -5,6 +5,7 @@ __pycache__
 .Python
 env
 venv
+.venv
 .env
 .env.local
 *.log
@@ -18,6 +19,7 @@ README.md
 .idea
 node_modules
 frontend
+tests
 
 # Don't ignore startup scripts
 !wait-for-db.py

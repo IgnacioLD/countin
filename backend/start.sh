@@ -6,8 +6,9 @@ echo "=== CountIn Backend Startup ==="
 # Wait for database
 python wait-for-db.py
 
-# Database tables are created automatically by main.py on startup
-echo "Migration check complete"
+# Apply database migrations
+echo "Running database migrations..."
+alembic upgrade head
 
 # Start the application
 echo "Starting uvicorn server..."

@@ -1,25 +1,22 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.core.database import engine, Base
+
 from app.api.v1.api import api_router
-import logging
+from app.core.config import settings
+from app.models import (  # noqa: F401 (imports register all models for Alembic)
+    CameraStation,
+    CountingLine,
+    CountSnapshot,
+    CrossingEvent,
+    HubSession,
+    Session,
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Import all models to register them with SQLAlchemy
-from app.models import Session, CountingLine, CrossingEvent, CountSnapshot, HubSession, CameraStation
-
-# Create database tables with error handling
-try:
-    logger.info("Creating database tables...")
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created successfully")
-except Exception as e:
-    logger.error(f"Failed to create database tables: {e}")
-    raise
 
 # Create FastAPI app
 app = FastAPI(

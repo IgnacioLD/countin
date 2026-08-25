@@ -34,6 +34,10 @@ COPY --from=builder /root/.local /root/.local
 # Copy application
 COPY ./app /app/app
 
+# Copy migration files (applied by start.sh on container start)
+COPY alembic.ini ./alembic.ini
+COPY ./migrations /app/migrations
+
 # Copy startup scripts
 COPY wait-for-db.py start.sh ./
 RUN chmod +x start.sh wait-for-db.py

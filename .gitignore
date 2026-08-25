@@ -51,6 +51,9 @@ playwright-report/
 *.db
 *.sqlite
 
+# uv artifact (deps are managed with requirements.txt)
+backend/uv.lock
+
 # Docker volumes (local only)
 postgres_data/
 

@@ -97,6 +97,8 @@ class CountInApp {
         this.hubWsReconnectTimer = null;
         this.hubWsRetryCount = 0;
         this.hubWsIntentionalClose = false;
+        this.hubPollTimer = null;
+        this.hubListenersSet = false;
         // Camera id -> {id, name, location, total_in, total_out, online}
         this.connectedCameras = new Map();
         this.hubOverviewChart = null;
@@ -117,6 +119,8 @@ class CountInApp {
         this.cameraWsIntentionalClose = false;
         this.hubId = null;
         this.cameraListenersSet = false;
+        // Base camera-selected handler, kept so wrapper chains never stack up
+        this.baseOnCameraSelected = this.onCameraSelected.bind(this);
 
         // Performance optimization
         this.frameCount = 0;
@@ -247,9 +251,8 @@ class CountInApp {
             this.cameraSelector.show();
 
             // When camera is selected, show setup guide
-            const originalOnCameraSelected = this.onCameraSelected.bind(this);
             this.onCameraSelected = (stream, deviceId) => {
-                originalOnCameraSelected(stream, deviceId);
+                this.baseOnCameraSelected(stream, deviceId);
 
                 // Show setup guide overlay
                 const setupGuide = document.getElementById('setup-guide');
@@ -1106,6 +1109,14 @@ class CountInApp {
     }
 
     setupHubEventListeners() {
+        // Hub mode can be entered multiple times (reuse of a saved session);
+        // bind each listener exactly once.
+        if (this.hubListenersSet) {
+            this.initializeHubChart();
+            return;
+        }
+        this.hubListenersSet = true;
+
         const showQRBtn = document.getElementById('show-qr-btn');
         const qrModal = document.getElementById('qr-modal');
         const closeQRBtn = document.getElementById('close-qr-btn');
@@ -1146,6 +1157,7 @@ class CountInApp {
     initializeHubChart() {
         const canvas = document.getElementById('hub-overview-chart');
         if (!canvas) return;
+        if (this.hubOverviewChart) return; // created once
 
         this.hubOverviewChart = new Chart(canvas, {
             type: 'line',
@@ -1347,6 +1359,9 @@ class CountInApp {
                 case 'camera_offline':
                     this.setCameraOnline(message.camera_id, false);
                     break;
+                case 'camera_removed':
+                    this.handleCameraRemoved(message.camera_id);
+                    break;
                 default:
                     // pong and others need no action
                     break;
@@ -1438,6 +1453,16 @@ class CountInApp {
         this.renderHubStats();
     }
 
+    handleCameraRemoved(cameraId) {
+        const camera = this.connectedCameras.get(cameraId);
+        if (!camera) return;
+
+        this.connectedCameras.delete(cameraId);
+        this.renderHubCameras();
+        this.renderHubStats();
+        this.log(`Camera removed: ${camera.name}`, 'warning');
+    }
+
     updateHubChartForTotals() {
         let totalIn = 0;
         let totalOut = 0;
@@ -1455,6 +1480,11 @@ class CountInApp {
 
     async pollHubStats() {
         if (this.appMode !== 'hub' || !this.hubSession) return;
+
+        // Any previously scheduled poll is superseded so re-entering hub mode
+        // can never spin up competing polling loops.
+        clearTimeout(this.hubPollTimer);
+        this.hubPollTimer = null;
 
         try {
             // Camera list is the source for names/status; totals come from the
@@ -1479,7 +1509,7 @@ class CountInApp {
         }
 
         // Poll every 5 seconds
-        setTimeout(() => this.pollHubStats(), 5000);
+        this.hubPollTimer = setTimeout(() => this.pollHubStats(), 5000);
     }
 
     mergeServerCameras(cameras) {
@@ -1890,9 +1920,8 @@ class CountInApp {
         this.cameraSelector.show();
 
         // Override onCameraSelected to show setup guide for drawing
-        const originalOnCameraSelected = this.onCameraSelected.bind(this);
         this.onCameraSelected = (stream, deviceId) => {
-            originalOnCameraSelected(stream, deviceId);
+            this.baseOnCameraSelected(stream, deviceId);
 
             // Show setup guide overlay
             const setupGuide = document.getElementById('setup-guide');

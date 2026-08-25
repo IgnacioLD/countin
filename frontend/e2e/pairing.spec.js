@@ -77,4 +77,50 @@ test.describe('mobile camera station pairing with hub', () => {
         await desktop.close();
         await mobile.close();
     });
+
+    test('hub deletes the camera; the phone returns to the pairing screen', async ({
+        browser,
+    }) => {
+        const desktop = await browser.newContext();
+        const hubPage = await desktop.newPage();
+        await hubPage.goto('/');
+        await hubPage.getByRole('button', { name: /Hub Dashboard/ }).click();
+        await expect(hubPage.locator('#hub-view')).toBeVisible();
+
+        const code = await hubPage.evaluate(() => {
+            document.getElementById('toggle-code-btn').click();
+            return document.getElementById('hub-pairing-code').textContent;
+        });
+
+        const mobile = await browser.newContext({
+            ...devices['Pixel 7'],
+            permissions: ['camera'],
+        });
+        const cameraPage = await mobile.newPage();
+        await cameraPage.goto('/');
+        await cameraPage.getByRole('button', { name: /Camera Station/ }).click();
+        await cameraPage.locator('#pairing-code-input').fill(code);
+        await cameraPage.locator('#camera-name-input').fill('Temp Cam');
+        await cameraPage.locator('#pair-camera-btn').click();
+        await expect(cameraPage.locator('#camera-connected')).toBeVisible();
+
+        // Hub removes the camera
+        hubPage.on('dialog', (dialog) => dialog.accept());
+        await hubPage
+            .locator('.camera-card', { hasText: 'Temp Cam' })
+            .getByRole('button', { name: 'Delete' })
+            .click();
+
+        // The phone is kicked back to the pairing screen and the hub list
+        // no longer shows the camera
+        await expect(cameraPage.locator('#camera-pairing')).toBeVisible({
+            timeout: 15_000,
+        });
+        await expect(
+            hubPage.locator('#hub-camera-list .empty-state')
+        ).toBeVisible({ timeout: 15_000 });
+
+        await desktop.close();
+        await mobile.close();
+    });
 });

@@ -20,8 +20,11 @@ from app.models import (  # noqa: F401 (imports register all models)
 # access to the values within the .ini file in use.
 config = context.config
 
-# Use the application's DATABASE_URL rather than a value baked into the ini.
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Use the application's DATABASE_URL unless an explicit URL was provided on
+# the command line / Config object (used by tests).
+url = config.get_main_option("sqlalchemy.url")
+if not url or url.startswith("driver://"):
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

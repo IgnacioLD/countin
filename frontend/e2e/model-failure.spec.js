@@ -29,6 +29,7 @@ test.describe('detection model failure', () => {
         await page.route('**/tfjs-models/**', (route) => route.abort());
         await page.route('**/tfhub.dev/**', (route) => route.abort());
         await page.route('**/storage.googleapis.com/**', (route) => route.abort());
+        await page.route('**/cdn.jsdelivr.net/**', (route) => route.abort());
         await page.route('**/models/ssdlite/**', (route) => route.abort());
 
         await page.goto('/');
@@ -75,6 +76,7 @@ test.describe('detection model failure', () => {
         await page.route('**/tfjs-models/**', (route) => route.abort());
         await page.route('**/tfhub.dev/**', (route) => route.abort());
         await page.route('**/storage.googleapis.com/**', (route) => route.abort());
+        await page.route('**/cdn.jsdelivr.net/**', (route) => route.abort());
 
         await page.goto('/');
         await page.getByRole('button', { name: /Standalone/ }).click();

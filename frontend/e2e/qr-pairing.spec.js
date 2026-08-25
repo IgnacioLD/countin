@@ -4,6 +4,8 @@ test.describe('QR code pairing flow (mobile scans hub QR)', () => {
     test('mobile scans QR link, names the camera, pairs and counts to the hub', async ({
         browser,
     }) => {
+        test.setTimeout(90_000); // model tests run before this one in the suite
+
         // Desktop: create a hub dashboard
         const desktop = await browser.newContext();
         const hubPage = await desktop.newPage();
@@ -52,7 +54,7 @@ test.describe('QR code pairing flow (mobile scans hub QR)', () => {
                 return v && v.readyState >= 2 && v.videoWidth > 0;
             },
             null,
-            { timeout: 15_000 }
+            { timeout: 30_000 }
         );
         const box = await video.boundingBox();
         expect(box.height).toBeGreaterThan(100);
@@ -101,7 +103,7 @@ test.describe('QR code pairing flow (mobile scans hub QR)', () => {
         // Hub instantly shows the camera with the user-provided name
         await expect(
             hubPage.locator('#hub-camera-list', { hasText: 'Back Door' })
-        ).toBeVisible({ timeout: 15_000 });
+        ).toBeVisible({ timeout: 30_000 });
 
         await desktop.close();
         await mobile.close();

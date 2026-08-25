@@ -59,35 +59,56 @@ window.rfdetrAdapter = (() => {
             // backend, which the coco-ssd package alone does not.
             const tf = await import('@tensorflow/tfjs');
             const cocoSsd = await import('@tensorflow-models/coco-ssd');
-            await tf.ready();
 
-            // Prefer the self-hosted lite model (served from this origin, so
-            // it works even where the model CDN is blocked or slow), then
-            // fall back to the CDN variants.
+            // Fall back to CPU if the preferred backend is unavailable
+            // (e.g. WebGL problems on some mobile browsers).
+            try {
+                await tf.ready();
+            } catch (e) {
+                console.warn('Preferred TF backend unavailable, falling back to cpu', e);
+                await tf.setBackend('cpu');
+                await tf.ready();
+            }
+            console.log('TensorFlow backend:', tf.getBackend());
+
+            // Model sources in order of preference. The self-hosted weights
+            // load even where the CDNs are blocked; jsDelivr and the tfjs CDN
+            // are global fallbacks.
             const attempts = [
-                () => cocoSsd.load({ modelUrl: '/models/ssdlite/model.json' }),
-                () => cocoSsd.load({ base: 'lite_mobilenet_v2' }),
-                () => cocoSsd.load(),
+                {
+                    name: 'self-hosted',
+                    fn: () => cocoSsd.load({ modelUrl: '/models/ssdlite/model.json' }),
+                },
+                {
+                    name: 'jsdelivr CDN',
+                    fn: () => cocoSsd.load({
+                        modelUrl: 'https://cdn.jsdelivr.net/gh/IgnacioLD/countin@main/frontend/public/models/ssdlite/model.json',
+                    }),
+                },
+                { name: 'tfjs CDN lite', fn: () => cocoSsd.load({ base: 'lite_mobilenet_v2' }) },
+                { name: 'tfjs CDN default', fn: () => cocoSsd.load() },
             ];
 
             let lastError = null;
+            let sourceUsed = null;
             for (const attempt of attempts) {
                 try {
                     model = await withTimeout(
-                        attempt(),
+                        attempt.fn(),
                         60000,
                         'Model loading timed out after 60 seconds'
                     );
+                    sourceUsed = attempt.name;
                     break;
                 } catch (e) {
                     lastError = e;
-                    console.warn('Model source failed, trying next source', e.message);
+                    console.warn(`Model source failed (${attempt.name}):`, e.message);
                 }
             }
             if (!model) throw lastError;
 
             isLoaded = true;
-            console.log('COCO-SSD model loaded successfully');
+            console.log(`COCO-SSD model loaded successfully (${sourceUsed})`);
             return model;
         } catch (error) {
             loadFailed = true;
